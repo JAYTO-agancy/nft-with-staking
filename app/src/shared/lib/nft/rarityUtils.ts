@@ -53,7 +53,8 @@ export async function updateRarityChances() {
   }
 }
 
-export async function selectRarityByChance(): Promise<number> {
+type Rarity = 1 | 2 | 3 | 4 | 5;
+export async function selectRarityByChance(): Promise<Rarity> {
   const rarities = await prisma.nftRarity.findMany({
     where: { currentChance: { gt: 0 } },
     orderBy: { rarityLevel: "asc" },
@@ -65,7 +66,7 @@ export async function selectRarityByChance(): Promise<number> {
   for (const rarity of rarities) {
     random -= rarity.currentChance;
     if (random <= 0) {
-      return rarity.rarityLevel;
+      return rarity.rarityLevel as Rarity;
     }
   }
 

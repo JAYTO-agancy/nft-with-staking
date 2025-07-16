@@ -7,6 +7,8 @@ A modern application built with Next.js.
 1. Duplicate the `.env.example` file and rename it to `.env` and need change variables for connect database:
 ```bash
 cp .env.example .env
+
+docker compose up -d # start database
 ```
 
 2. Run the development server:

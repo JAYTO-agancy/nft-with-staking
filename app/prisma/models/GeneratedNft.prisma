@@ -8,6 +8,7 @@ model GeneratedNft {
   rarityName  String
   dna         String @unique
   imageUrl    String
+  jsonUrl     String // Добавляем поле для URL JSON файла
   metadata    Json
 
   // <--/ Main Fields /-->

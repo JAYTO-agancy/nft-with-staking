@@ -1,6 +1,8 @@
-import prisma from "@/shared/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 
-async function initRarity() {
+const prisma = new PrismaClient();
+
+async function main() {
   const rarityData = [
     {
       rarityLevel: 1,
@@ -47,9 +49,14 @@ async function initRarity() {
     });
   }
 
-  console.log("Rarity data initialized");
+  console.log("✅ Rarity levels seeded successfully");
 }
 
-initRarity()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+main()
+  .catch((e) => {
+    console.error("❌ Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

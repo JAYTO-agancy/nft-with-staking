@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "npx prisma db push",
-    "db:seed": "ts-node prisma/seed.ts",
+    "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "npx prisma migrate reset",
     "db:studio": "npx prisma studio",
     "db:migrate": "npx prisma migrate",
@@ -48,7 +48,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.17.47",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-world-flags": "^1.6.0",
@@ -60,6 +60,8 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.8.2",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "tw-animate-css": "^1.3.0",
     "typescript": "^5",
     "typescript-eslint": "^8.32.1"
