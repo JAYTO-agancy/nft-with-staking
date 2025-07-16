@@ -1,16 +1,16 @@
 # 📝 NFT App - Nifty Frogs ✨
 
-## Для запуска проекта нужно пройти все этапы:
+## To run the project, follow these steps:
 
-** Рекомендованная версия Node.JS v18.20.2**
+***Recommended Node.js version: v18.20.2***
 
-1. Установить зависимости для nft генератора (hashlips):
+1. Install dependencies for the NFT generator (HashLips):
 ```bash
 cd ./nft-generator-hashlips
 yarn # npm i
 ```
 
-2. Запустить Next.js (фронтенд и немного бэкенда за счёт интеграции Prisma ORM + PostgreSQL):
+2. Launch Next.js (frontend with backend integration via Prisma ORM + PostgreSQL):
 ```bash
 cd ./app
 # check README.md file in root folder
