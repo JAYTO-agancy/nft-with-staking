@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {IStakableNFT} from "../interfaces/IStakableNFT.sol";
 import {Errors} from "../libs/Errors.sol";
 
@@ -124,7 +125,7 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         super._increaseBalance(account, value);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable, IERC165) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
