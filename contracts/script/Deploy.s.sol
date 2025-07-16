@@ -26,3 +26,5 @@ contract DeployScript is Script {
         vm.stopBroadcast();
     }
 }
+
+// forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify --verifier etherscan --etherscan-api-key sepolia
