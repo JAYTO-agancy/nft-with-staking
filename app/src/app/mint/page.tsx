@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function GeneratePage() {
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,10 @@ export default function GeneratePage() {
     const data = await response.json();
     setStats(data.stats);
   };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   return (
     <div className="p-8">
