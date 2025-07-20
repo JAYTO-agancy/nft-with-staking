@@ -14,8 +14,12 @@ interface IStakableNFT is IERC721Enumerable {
 
     event NFTMinted(address indexed to, uint256 indexed tokenId, RarityTier rarity);
     event RarityMultiplierUpdated(RarityTier indexed rarity, uint256 multiplier);
+    event CommitSubmitted(address indexed user, bytes32 commitHash, uint256 timestamp);
+    event RarityRevealed(address indexed user, uint256 tokenId, RarityTier rarity, uint256 timestamp);
 
-    function mint(uint256 quantity) external payable;
+    function mint(uint256 quantity, bytes32 secret) external payable;
+    function commitRarity(bytes32 commitHash) external;
+    function revealAndMint(bytes32 secret, uint256 quantity) external payable;
     function getTokenMultiplier(uint256 tokenId) external view returns (uint256);
     function getTokenRarity(uint256 tokenId) external view returns (RarityTier);
     function getRarityRemainingSupply(RarityTier rarity) external view returns (uint256);

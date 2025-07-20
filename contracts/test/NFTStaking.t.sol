@@ -32,9 +32,10 @@ contract NFTStakingTest is Test {
     function testMintAndStake() public {
         vm.startPrank(alice);
 
-        // Mint NFTs
+        // Mint NFTs with secret
         uint256 quantity = 3;
-        nft.mint{value: nft.mintPrice() * quantity}(quantity);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * quantity}(quantity, secret);
 
         // Check ownership
         assertEq(nft.balanceOf(alice), quantity);
@@ -60,7 +61,8 @@ contract NFTStakingTest is Test {
     function testClaimRewards() public {
         // Setup: Alice stakes NFTs
         vm.startPrank(alice);
-        nft.mint{value: nft.mintPrice() * 1}(1);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * 1}(1, secret);
         nft.approve(address(staking), 1);
 
         uint256[] memory tokenIds = new uint256[](1);
@@ -91,7 +93,8 @@ contract NFTStakingTest is Test {
     function testUnstake() public {
         // Setup: Alice stakes NFTs
         vm.startPrank(alice);
-        nft.mint{value: nft.mintPrice() * 1}(1);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * 1}(1, secret);
         nft.approve(address(staking), 1);
 
         uint256[] memory tokenIds = new uint256[](1);
@@ -120,7 +123,8 @@ contract NFTStakingTest is Test {
 
         // Mint multiple NFTs to test rarity distribution
         uint256 quantity = 10;
-        nft.mint{value: nft.mintPrice() * quantity}(quantity);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * quantity}(quantity, secret);
 
         // Count rarities
         uint256[5] memory rarityCounts;
@@ -145,7 +149,8 @@ contract NFTStakingTest is Test {
 
         // Try to stake while paused
         vm.startPrank(alice);
-        nft.mint{value: nft.mintPrice() * 1}(1);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * 1}(1, secret);
         nft.approve(address(staking), 1);
 
         uint256[] memory tokenIds = new uint256[](1);
@@ -168,7 +173,8 @@ contract NFTStakingTest is Test {
     function testEmergencyWithdraw() public {
         // Setup: Alice stakes NFT
         vm.startPrank(alice);
-        nft.mint{value: nft.mintPrice() * 1}(1);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * 1}(1, secret);
         nft.approve(address(staking), 1);
 
         uint256[] memory tokenIds = new uint256[](1);
@@ -188,7 +194,8 @@ contract NFTStakingTest is Test {
         quantity = uint8(bound(quantity, 1, 10));
 
         vm.startPrank(alice);
-        nft.mint{value: nft.mintPrice() * quantity}(quantity);
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        nft.mint{value: nft.mintPrice() * quantity}(quantity, secret);
 
         uint256[] memory tokenIds = new uint256[](quantity);
         for (uint256 i = 0; i < quantity; i++) {
@@ -199,6 +206,48 @@ contract NFTStakingTest is Test {
         staking.stake(tokenIds);
 
         assertEq(staking.getStakedTokenCount(alice), quantity);
+        vm.stopPrank();
+    }
+
+    function testCommitRevealSuccess() public {
+        vm.startPrank(alice);
+
+        // Generate secret
+        bytes32 secret = keccak256(abi.encodePacked("test_secret", alice, block.timestamp));
+        
+        // Create commit hash
+        bytes32 commitHash = keccak256(abi.encodePacked(secret, alice));
+        
+        // Submit commit
+        nft.commitRarity(commitHash);
+        
+        // Fast forward past commit delay
+        vm.warp(block.timestamp + 2 hours);
+        
+        // Reveal and mint
+        nft.revealAndMint{value: nft.mintPrice() * 1}(secret, 1);
+        
+        // Verify NFT was minted
+        assertEq(nft.balanceOf(alice), 1);
+        assertEq(nft.ownerOf(1), alice);
+        
+        vm.stopPrank();
+    }
+
+    function testCommitRevealAlreadyExists() public {
+        vm.startPrank(alice);
+
+        bytes32 secret1 = keccak256(abi.encodePacked("test_secret1", alice, block.timestamp));
+        bytes32 secret2 = keccak256(abi.encodePacked("test_secret2", alice, block.timestamp));
+        bytes32 commitHash1 = keccak256(abi.encodePacked(secret1, alice));
+        bytes32 commitHash2 = keccak256(abi.encodePacked(secret2, alice));
+        
+        nft.commitRarity(commitHash1);
+        
+        // Try to commit again (should fail)
+        vm.expectRevert(Errors.CommitAlreadyExists.selector);
+        nft.commitRarity(commitHash2);
+        
         vm.stopPrank();
     }
 }

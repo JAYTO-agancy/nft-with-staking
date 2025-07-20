@@ -19,6 +19,12 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
     mapping(RarityTier => uint256) public raritySupplyLimits;
     mapping(RarityTier => uint256) public rarityMintedCount;
 
+    // Commit-reveal scheme
+    mapping(address => bytes32) public commits;
+    mapping(address => uint256) public commitTimestamps;
+    uint256 public constant COMMIT_DELAY = 1 hours;
+    uint256 public constant COMMIT_EXPIRY = 24 hours;
+
     constructor(string memory baseURI) ERC721("Stakable NFT", "SNFT") Ownable(msg.sender) {
         _baseTokenURI = baseURI;
         _initializeRaritySystem();
@@ -38,7 +44,12 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         raritySupplyLimits[RarityTier.LEGENDARY] = 50;
     }
 
-    function mint(uint256 quantity) external payable {
+    /**
+     * @dev Mint with commit-reveal scheme for secure rarity determination
+     * @param quantity Number of NFTs to mint
+     * @param secret Secret value for rarity determination
+     */
+    function mint(uint256 quantity, bytes32 secret) external payable {
         if (quantity == 0 || quantity > 10) revert Errors.InvalidQuantity();
         if (_tokenIdCounter + quantity > MAX_SUPPLY) revert Errors.ExceedsNFTMaxSupply();
         if (msg.value < mintPrice * quantity) revert Errors.InsufficientPayment();
@@ -47,16 +58,11 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
             _tokenIdCounter++;
             uint256 tokenId = _tokenIdCounter;
 
-            RarityTier rarity = _determineRarity(tokenId);
+            // Determine rarity based on secret value
+            RarityTier rarity = _determineRarityFromSecret(secret, tokenId);
 
-            // Проверяем, не превышен ли лимит для данной редкости
-            if (rarityMintedCount[rarity] >= raritySupplyLimits[rarity]) {
-                // Ищем следующую доступную редкость
-                rarity = _findAvailableRarity();
-                if (rarity == RarityTier.COMMON && rarityMintedCount[rarity] >= raritySupplyLimits[rarity]) {
-                    revert Errors.ExceedsNFTMaxSupply(); // Все редкости заполнены
-                }
-            }
+            // Check limits and find available rarity
+            rarity = _findAvailableRarity(rarity);
 
             _safeMint(msg.sender, tokenId);
             tokenRarity[tokenId] = rarity;
@@ -66,8 +72,73 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         }
     }
 
-    function _findAvailableRarity() private view returns (RarityTier) {
-        // Проверяем редкости в порядке убывания (кроме COMMON)
+    /**
+     * @dev User submits hash of secret value
+     * @param commitHash Hash of (secret + userAddress)
+     */
+    function commitRarity(bytes32 commitHash) external {
+        if (commits[msg.sender] != bytes32(0)) {
+            revert Errors.CommitAlreadyExists();
+        }
+
+        commits[msg.sender] = commitHash;
+        commitTimestamps[msg.sender] = block.timestamp;
+
+        emit CommitSubmitted(msg.sender, commitHash, block.timestamp);
+    }
+
+    /**
+     * @dev Reveal secret value and mint
+     * @param secret Secret value
+     * @param quantity Number of NFTs to mint
+     */
+    function revealAndMint(bytes32 secret, uint256 quantity) external payable {
+        bytes32 expectedCommit = keccak256(abi.encodePacked(secret, msg.sender));
+
+        if (commits[msg.sender] != expectedCommit) {
+            revert Errors.InvalidCommit();
+        }
+
+        if (block.timestamp < commitTimestamps[msg.sender] + COMMIT_DELAY) {
+            revert Errors.CommitTooEarly();
+        }
+
+        if (block.timestamp > commitTimestamps[msg.sender] + COMMIT_EXPIRY) {
+            revert Errors.CommitExpired();
+        }
+
+        // Clear commit
+        delete commits[msg.sender];
+        delete commitTimestamps[msg.sender];
+
+        // Mint NFTs
+        if (quantity == 0 || quantity > 10) revert Errors.InvalidQuantity();
+        if (_tokenIdCounter + quantity > MAX_SUPPLY) revert Errors.ExceedsNFTMaxSupply();
+        if (msg.value < mintPrice * quantity) revert Errors.InsufficientPayment();
+
+        for (uint256 i = 0; i < quantity; i++) {
+            _tokenIdCounter++;
+            uint256 tokenId = _tokenIdCounter;
+
+            RarityTier rarity = _determineRarityFromSecret(secret, tokenId);
+            rarity = _findAvailableRarity(rarity);
+
+            _safeMint(msg.sender, tokenId);
+            tokenRarity[tokenId] = rarity;
+            rarityMintedCount[rarity]++;
+
+            emit NFTMinted(msg.sender, tokenId, rarity);
+            emit RarityRevealed(msg.sender, tokenId, rarity, block.timestamp);
+        }
+    }
+
+    function _findAvailableRarity(RarityTier preferredRarity) private view returns (RarityTier) {
+        // First try preferred rarity
+        if (rarityMintedCount[preferredRarity] < raritySupplyLimits[preferredRarity]) {
+            return preferredRarity;
+        }
+
+        // Find next available rarity
         if (rarityMintedCount[RarityTier.LEGENDARY] < raritySupplyLimits[RarityTier.LEGENDARY]) {
             return RarityTier.LEGENDARY;
         }
@@ -80,20 +151,25 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         if (rarityMintedCount[RarityTier.UNCOMMON] < raritySupplyLimits[RarityTier.UNCOMMON]) {
             return RarityTier.UNCOMMON;
         }
-        return RarityTier.COMMON;
+        if (rarityMintedCount[RarityTier.COMMON] < raritySupplyLimits[RarityTier.COMMON]) {
+            return RarityTier.COMMON;
+        }
+
+        revert Errors.ExceedsNFTMaxSupply(); // All rarities are filled
     }
 
-    // ⚠️ ВНИМАНИЕ: Эта функция использует предсказуемые значения блокчейна
-    // Для продакшена рекомендуется использовать Chainlink VRF или commit-reveal схему
-    function _determineRarity(uint256 tokenId) private view returns (RarityTier) {
-        uint256 randomValue =
-            uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, tokenId, msg.sender))) % 10000;
+    function _determineRarityFromSecret(bytes32 secret, uint256 tokenId) private pure returns (RarityTier) {
+        uint256 randomValue = uint256(keccak256(abi.encodePacked(secret, tokenId))) % 10000;
 
-        if (randomValue < 50) return RarityTier.LEGENDARY;
-        else if (randomValue < 500) return RarityTier.EPIC;
-        else if (randomValue < 1500) return RarityTier.RARE;
-        else if (randomValue < 4000) return RarityTier.UNCOMMON;
-        else return RarityTier.COMMON;
+        if (randomValue < 50) return RarityTier.LEGENDARY; // 0.5%
+
+        else if (randomValue < 500) return RarityTier.EPIC; // 4.5%
+
+        else if (randomValue < 1500) return RarityTier.RARE; // 10%
+
+        else if (randomValue < 4000) return RarityTier.UNCOMMON; // 25%
+
+        else return RarityTier.COMMON; // 60%
     }
 
     function getTokenMultiplier(uint256 tokenId) external view returns (uint256) {
@@ -153,7 +229,12 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         super._increaseBalance(account, value);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721Enumerable, IERC165)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 }

@@ -26,4 +26,10 @@ library Errors {
     error TokenNotStaked();
     error ContractPaused();
     error InvalidRewardRate();
+
+    // Commit-reveal errors
+    error CommitAlreadyExists();
+    error InvalidCommit();
+    error CommitTooEarly();
+    error CommitExpired();
 }
