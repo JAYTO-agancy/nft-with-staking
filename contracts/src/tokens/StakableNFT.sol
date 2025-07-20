@@ -49,8 +49,13 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
 
             RarityTier rarity = _determineRarity(tokenId);
 
+            // Проверяем, не превышен ли лимит для данной редкости
             if (rarityMintedCount[rarity] >= raritySupplyLimits[rarity]) {
-                rarity = RarityTier.COMMON;
+                // Ищем следующую доступную редкость
+                rarity = _findAvailableRarity();
+                if (rarity == RarityTier.COMMON && rarityMintedCount[rarity] >= raritySupplyLimits[rarity]) {
+                    revert Errors.ExceedsNFTMaxSupply(); // Все редкости заполнены
+                }
             }
 
             _safeMint(msg.sender, tokenId);
@@ -61,6 +66,25 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
         }
     }
 
+    function _findAvailableRarity() private view returns (RarityTier) {
+        // Проверяем редкости в порядке убывания (кроме COMMON)
+        if (rarityMintedCount[RarityTier.LEGENDARY] < raritySupplyLimits[RarityTier.LEGENDARY]) {
+            return RarityTier.LEGENDARY;
+        }
+        if (rarityMintedCount[RarityTier.EPIC] < raritySupplyLimits[RarityTier.EPIC]) {
+            return RarityTier.EPIC;
+        }
+        if (rarityMintedCount[RarityTier.RARE] < raritySupplyLimits[RarityTier.RARE]) {
+            return RarityTier.RARE;
+        }
+        if (rarityMintedCount[RarityTier.UNCOMMON] < raritySupplyLimits[RarityTier.UNCOMMON]) {
+            return RarityTier.UNCOMMON;
+        }
+        return RarityTier.COMMON;
+    }
+
+    // ⚠️ ВНИМАНИЕ: Эта функция использует предсказуемые значения блокчейна
+    // Для продакшена рекомендуется использовать Chainlink VRF или commit-reveal схему
     function _determineRarity(uint256 tokenId) private view returns (RarityTier) {
         uint256 randomValue =
             uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, tokenId, msg.sender))) % 10000;
@@ -84,6 +108,10 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
 
     function getRarityRemainingSupply(RarityTier rarity) external view returns (uint256) {
         return raritySupplyLimits[rarity] - rarityMintedCount[rarity];
+    }
+
+    function getContractOwner() external view returns (address) {
+        return owner();
     }
 
     function updateRarityMultiplier(RarityTier rarity, uint256 multiplier) external onlyOwner {

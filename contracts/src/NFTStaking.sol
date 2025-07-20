@@ -65,7 +65,7 @@ contract NFTStaking is ReentrancyGuard, Ownable, Pausable, INFTStaking {
         }
     }
 
-    function unstake(uint256[] calldata tokenIds) external nonReentrant {
+    function unstake(uint256[] calldata tokenIds) external nonReentrant whenNotPaused {
         if (tokenIds.length == 0) revert Errors.NoTokensProvided();
 
         uint256 totalRewards = 0;
@@ -102,7 +102,7 @@ contract NFTStaking is ReentrancyGuard, Ownable, Pausable, INFTStaking {
         }
     }
 
-    function claimRewards(uint256[] calldata tokenIds) external nonReentrant {
+    function claimRewards(uint256[] calldata tokenIds) external nonReentrant whenNotPaused {
         if (tokenIds.length == 0) revert Errors.NoTokensProvided();
 
         uint256 totalRewards = 0;
@@ -129,7 +129,7 @@ contract NFTStaking is ReentrancyGuard, Ownable, Pausable, INFTStaking {
         }
     }
 
-    function claimAllRewards() external nonReentrant {
+    function claimAllRewards() external nonReentrant whenNotPaused {
         uint256[] memory stakedTokens = userStakedTokens[msg.sender];
         if (stakedTokens.length == 0) revert Errors.NoStakedTokens();
 

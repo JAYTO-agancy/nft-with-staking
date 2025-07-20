@@ -24,4 +24,5 @@ interface IStakableNFT is IERC721Enumerable {
     function setBaseURI(string memory baseURI) external;
     function withdraw() external;
     function mintPrice() external view returns (uint256);
+    function getContractOwner() external view returns (address);
 }

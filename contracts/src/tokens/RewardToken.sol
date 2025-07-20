@@ -13,6 +13,7 @@ contract RewardToken is ERC20, Ownable, IRewardToken {
     constructor() ERC20("Reward Token", "RWD") Ownable(msg.sender) {}
 
     function mint(address to, uint256 amount) external onlyOwner {
+        if (to == address(0)) revert Errors.InvalidAddress();
         if (totalMinted + amount > MAX_SUPPLY) revert Errors.ExceedsMaxSupply();
 
         totalMinted += amount;
