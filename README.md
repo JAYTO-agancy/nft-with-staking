@@ -1,4 +1,4 @@
-# 📝 NFT App - Nifty Frogs ✨
+# 📝 NFT App with stacking ✨
 
 ## To run the project, follow these steps:
 
