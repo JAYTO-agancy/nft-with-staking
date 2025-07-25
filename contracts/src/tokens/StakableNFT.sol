@@ -25,7 +25,7 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
     uint256 public constant COMMIT_DELAY = 1 hours;
     uint256 public constant COMMIT_EXPIRY = 24 hours;
 
-    constructor(string memory baseURI) ERC721("Stakable NFT", "SNFT") Ownable(msg.sender) {
+    constructor(string memory baseURI) ERC721("Plumffel NFT", "PlumffelNFT") Ownable(msg.sender) {
         _baseTokenURI = baseURI;
         _initializeRaritySystem();
     }
@@ -133,29 +133,20 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
     }
 
     function _findAvailableRarity(RarityTier preferredRarity) private view returns (RarityTier) {
-        // First try preferred rarity
+        // Сначала пробуем желаемую редкость
         if (rarityMintedCount[preferredRarity] < raritySupplyLimits[preferredRarity]) {
             return preferredRarity;
         }
-
-        // Find next available rarity
-        if (rarityMintedCount[RarityTier.LEGENDARY] < raritySupplyLimits[RarityTier.LEGENDARY]) {
-            return RarityTier.LEGENDARY;
+        // Если лимит исчерпан, ищем менее редкую (enum с меньшим значением)
+        // Например, если preferredRarity = RARE (2), то пробуем UNCOMMON (1), потом COMMON (0)
+        for (uint256 i = uint256(preferredRarity); i > 0; i--) {
+            RarityTier lessRare = RarityTier(i - 1);
+            if (rarityMintedCount[lessRare] < raritySupplyLimits[lessRare]) {
+                return lessRare;
+            }
         }
-        if (rarityMintedCount[RarityTier.EPIC] < raritySupplyLimits[RarityTier.EPIC]) {
-            return RarityTier.EPIC;
-        }
-        if (rarityMintedCount[RarityTier.RARE] < raritySupplyLimits[RarityTier.RARE]) {
-            return RarityTier.RARE;
-        }
-        if (rarityMintedCount[RarityTier.UNCOMMON] < raritySupplyLimits[RarityTier.UNCOMMON]) {
-            return RarityTier.UNCOMMON;
-        }
-        if (rarityMintedCount[RarityTier.COMMON] < raritySupplyLimits[RarityTier.COMMON]) {
-            return RarityTier.COMMON;
-        }
-
-        revert Errors.ExceedsNFTMaxSupply(); // All rarities are filled
+        // Если ничего не найдено, revert
+        revert Errors.ExceedsNFTMaxSupply(); // Все лимиты исчерпаны
     }
 
     function _determineRarityFromSecret(bytes32 secret, uint256 tokenId) private pure returns (RarityTier) {

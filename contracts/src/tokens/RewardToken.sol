@@ -10,7 +10,7 @@ contract RewardToken is ERC20, Ownable, IRewardToken {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
     uint256 public totalMinted;
 
-    constructor() ERC20("Reward Token", "RWD") Ownable(msg.sender) {}
+    constructor() ERC20("Plumffel Coin", "PFC") Ownable(msg.sender) {}
 
     function mint(address to, uint256 amount) external onlyOwner {
         if (to == address(0)) revert Errors.InvalidAddress();
