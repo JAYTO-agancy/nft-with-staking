@@ -1,132 +1,475 @@
-import { Wallet, MousePointer, Eye, Trophy, ArrowRight } from "lucide-react";
+"use client";
+import {
+  Wallet,
+  MousePointer,
+  Eye,
+  Trophy,
+  ArrowRight,
+  Code,
+  Zap,
+  Sparkles,
+} from "lucide-react";
+import {
+  motion,
+  useInView,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  Variants,
+} from "framer-motion";
+import { useRef, useState, useEffect } from "react";
 
 const steps = [
   {
     icon: Wallet,
     title: "Connect Wallet",
     description:
-      "Use the button in the header to connect your Ethereum wallet (Sepolia network).",
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "bg-blue-50",
-    iconColor: "text-blue-600",
+      "Link your Web3 wallet to our secure platform using the latest blockchain protocols.",
+    color: "from-blue-500 via-cyan-500 to-teal-500",
+    bgGradient: "from-blue-900/20 via-cyan-900/20 to-teal-900/20",
+    glowColor: "shadow-blue-500/20",
+    number: "01",
   },
   {
-    icon: MousePointer,
-    title: "Mint NFT",
+    icon: Code,
+    title: "Smart Contract",
     description:
-      "Click the Mint button and confirm the transaction in your wallet.",
-    color: "from-purple-500 to-pink-500",
-    bgColor: "bg-purple-50",
-    iconColor: "text-purple-600",
+      "Our AI-powered smart contracts ensure fair distribution and authentic rarity generation.",
+    color: "from-purple-500 via-pink-500 to-rose-500",
+    bgGradient: "from-purple-900/20 via-pink-900/20 to-rose-900/20",
+    glowColor: "shadow-purple-500/20",
+    number: "02",
   },
   {
-    icon: Eye,
-    title: "View Your NFT",
+    icon: Zap,
+    title: "Instant Mint",
     description:
-      "After minting, your NFT will appear in your collection and you can see its rarity.",
-    color: "from-green-500 to-emerald-500",
-    bgColor: "bg-green-50",
-    iconColor: "text-green-600",
+      "Experience lightning-fast minting with real-time rarity calculation and immediate delivery.",
+    color: "from-orange-500 via-amber-500 to-yellow-500",
+    bgGradient: "from-orange-900/20 via-amber-900/20 to-yellow-900/20",
+    glowColor: "shadow-orange-500/20",
+    number: "03",
   },
   {
     icon: Trophy,
     title: "Stake & Earn",
     description:
-      "Stake your Plumffel NFT to earn rewards and participate in the ecosystem.",
-    color: "from-yellow-500 to-orange-500",
-    bgColor: "bg-yellow-50",
-    iconColor: "text-yellow-600",
+      "Lock your Plumffels to earn passive rewards while contributing to the ecosystem growth.",
+    color: "from-emerald-500 via-green-500 to-lime-500",
+    bgGradient: "from-emerald-900/20 via-green-900/20 to-lime-900/20",
+    glowColor: "shadow-emerald-500/20",
+    number: "04",
   },
 ];
 
 export function HowBuySection() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const smoothMouseX = useSpring(mouseX, { stiffness: 300, damping: 30 });
+  const smoothMouseY = useSpring(mouseY, { stiffness: 300, damping: 30 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = ref.current
+        ? (ref.current as HTMLElement).getBoundingClientRect()
+        : { left: 0, top: 0 };
+      mouseX.set(e.clientX - rect.left);
+      mouseY.set(e.clientY - rect.top);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const headerVariants: Variants = {
+    hidden: { y: 100, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring" as const,
+        damping: 25,
+        stiffness: 100,
+        duration: 0.8,
+      },
+    },
+  };
+
+  const cardVariants: Variants = {
+    hidden: {
+      y: 100,
+      opacity: 0,
+      rotateX: 45,
+      scale: 0.8,
+    },
+    visible: {
+      y: 0,
+      opacity: 1,
+      rotateX: 0,
+      scale: 1,
+      transition: {
+        type: "spring" as const,
+        damping: 20,
+        stiffness: 100,
+        duration: 0.8,
+      },
+    },
+  };
+
+  const floatingElementVariants: Variants = {
+    animate: {
+      y: [-20, 20, -20],
+      rotate: [0, 360],
+      transition: {
+        y: {
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut" as const,
+        },
+        rotate: {
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear" as const,
+        },
+      },
+    },
+  };
+
   return (
-    <section className="w-full bg-gradient-to-b from-white to-gray-50 py-16 md:py-24">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 px-6 py-2 text-sm font-medium text-purple-700">
-            <MousePointer className="h-4 w-4" />
-            <span>Simple Process</span>
-          </div>
+    <section
+      ref={ref}
+      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-32"
+    >
+      {/* Animated background elements */}
+      <div className="absolute inset-0">
+        <div className="absolute top-20 left-1/4 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl" />
+        <div className="absolute right-1/4 bottom-20 h-96 w-96 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl" />
 
-          <h2 className="mb-4 bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl md:text-5xl">
-            How to Get Your Plumffel
-          </h2>
+        {/* Floating geometric shapes */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={i}
+            variants={floatingElementVariants}
+            animate="animate"
+            className="absolute"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 4}s`,
+            }}
+          >
+            <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-400/30 to-pink-400/30" />
+          </motion.div>
+        ))}
+      </div>
 
-          <p className="mx-auto mb-16 max-w-2xl text-lg text-gray-600">
-            Follow these simple steps to join the Plumffel family and start your
-            NFT journey
-          </p>
-        </div>
+      {/* Mouse follower light */}
+      <motion.div
+        className="pointer-events-none absolute z-10 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/5 to-pink-500/5 blur-3xl"
+        style={{
+          x: useTransform(smoothMouseX, (x) => x - 192),
+          y: useTransform(smoothMouseY, (y) => y - 192),
+        }}
+      />
 
-        <div className="relative">
-          {/* Connection lines for desktop */}
-          <div className="absolute inset-0 hidden lg:block">
-            <div className="absolute top-1/2 left-1/4 h-0.5 w-1/4 bg-gradient-to-r from-blue-200 to-purple-200"></div>
-            <div className="absolute top-1/2 left-2/4 h-0.5 w-1/4 bg-gradient-to-r from-purple-200 to-green-200"></div>
-            <div className="absolute top-1/2 left-3/4 h-0.5 w-1/4 bg-gradient-to-r from-green-200 to-yellow-200"></div>
-          </div>
+      <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="space-y-20"
+        >
+          {/* Header */}
+          <motion.div variants={headerVariants} className="text-center">
+            <motion.div
+              className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-8 py-4 backdrop-blur-xl"
+              whileHover={{
+                scale: 1.05,
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+              }}
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "linear" as const,
+                }}
+              >
+                <Sparkles className="h-5 w-5 text-purple-400" />
+              </motion.div>
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-sm font-medium text-transparent">
+                Simple Process
+              </span>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <MousePointer className="h-5 w-5 text-pink-400" />
+              </motion.div>
+            </motion.div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map((step, i) => {
-              const Icon = step.icon;
-              return (
-                <div key={i} className="relative">
-                  <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-gray-200/50">
-                    {/* Background gradient */}
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${step.color} opacity-0 transition-opacity duration-300 group-hover:opacity-5`}
-                    ></div>
+            <motion.h2
+              className="mb-6 text-4xl font-black sm:text-5xl md:text-6xl lg:text-7xl"
+              initial={{ backgroundPosition: "0% 50%" }}
+              animate={{ backgroundPosition: "100% 50%" }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "linear" as const,
+              }}
+              style={{
+                background:
+                  "linear-gradient(90deg, #ffffff, #a855f7, #ec4899, #06b6d4, #ffffff)",
+                backgroundSize: "200% 100%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              HOW IT WORKS
+            </motion.h2>
 
-                    {/* Step number */}
-                    <div className="absolute -top-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-gray-600 to-gray-800 text-sm font-bold text-white">
-                      {i + 1}
-                    </div>
+            <motion.p
+              className="mx-auto max-w-3xl text-lg text-gray-400 md:text-xl"
+              variants={headerVariants}
+            >
+              Experience the future of NFT minting with our revolutionary
+              process designed for both newcomers and seasoned collectors. Each
+              step is crafted for maximum security and user experience.
+            </motion.p>
+          </motion.div>
 
-                    <div className="relative z-10 flex flex-col items-center text-center">
-                      {/* Icon */}
-                      <div
-                        className={`mb-4 rounded-xl ${step.bgColor} p-4 transition-transform duration-300 group-hover:scale-110`}
-                      >
-                        <Icon className={`h-8 w-8 ${step.iconColor}`} />
+          {/* Steps Grid */}
+          <div className="relative">
+            {/* Connection lines */}
+            <div className="absolute inset-0 hidden lg:block">
+              <svg className="h-full w-full" viewBox="0 0 1200 400">
+                <motion.path
+                  d="M 300 200 Q 600 100 900 200"
+                  stroke="url(#gradient1)"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeDasharray="10,5"
+                  initial={{ pathLength: 0 }}
+                  animate={isInView ? { pathLength: 1 } : { pathLength: 0 }}
+                  transition={{ duration: 2, ease: "easeInOut" as const }}
+                />
+                <defs>
+                  <linearGradient
+                    id="gradient1"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.5" />
+                    <stop offset="50%" stopColor="#ec4899" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.5" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isHovered = hoveredCard === index;
+
+                return (
+                  <motion.div
+                    key={index}
+                    variants={cardVariants}
+                    className="group relative"
+                    onHoverStart={() => setHoveredCard(index)}
+                    onHoverEnd={() => setHoveredCard(null)}
+                  >
+                    {/* Card glow effect */}
+                    <motion.div
+                      className={`absolute -inset-1 rounded-3xl bg-gradient-to-r ${step.color} opacity-0 blur-lg transition-opacity duration-500 group-hover:opacity-30`}
+                      animate={isHovered ? { scale: 1.05 } : { scale: 1 }}
+                    />
+
+                    {/* Main card */}
+                    <motion.div
+                      className={`relative h-full overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br ${step.bgGradient} backdrop-blur-xl`}
+                      style={{
+                        perspective: "1000px",
+                      }}
+                      whileHover={{
+                        y: -10,
+                        rotateX: 5,
+                        rotateY: isHovered ? (index % 2 === 0 ? -5 : 5) : 0,
+                        scale: 1.02,
+                      }}
+                      transition={{
+                        type: "spring" as const,
+                        stiffness: 400,
+                        damping: 25,
+                      }}
+                    >
+                      {/* Card number */}
+                      <div className="absolute top-6 right-6 z-10">
+                        <motion.div
+                          className="text-6xl font-black text-white/10"
+                          whileHover={{ scale: 1.1 }}
+                        >
+                          {step.number}
+                        </motion.div>
                       </div>
 
-                      {/* Title */}
-                      <h3 className="mb-3 text-xl font-semibold text-gray-900 transition-colors duration-300 group-hover:text-gray-800">
-                        {step.title}
-                      </h3>
+                      {/* Content */}
+                      <div className="relative z-20 p-8">
+                        {/* Icon container */}
+                        <motion.div
+                          className={`mb-6 inline-flex rounded-2xl bg-gradient-to-r ${step.color} p-4 ${step.glowColor} shadow-2xl`}
+                          whileHover={{
+                            scale: 1.1,
+                            rotate: [0, -5, 5, 0],
+                          }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Icon className="h-8 w-8 text-white" />
+                        </motion.div>
 
-                      {/* Description */}
-                      <p className="text-sm leading-relaxed text-gray-600 transition-colors duration-300 group-hover:text-gray-700">
-                        {step.description}
-                      </p>
+                        {/* Title */}
+                        <motion.h3
+                          className="mb-4 text-xl font-bold text-white md:text-2xl"
+                          whileHover={{ x: 5 }}
+                        >
+                          {step.title}
+                        </motion.h3>
 
-                      {/* Arrow for mobile */}
-                      {i < steps.length - 1 && (
-                        <div className="mt-6 block lg:hidden">
-                          <div className="flex justify-center">
-                            <ArrowRight className="h-5 w-5 text-gray-300" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        {/* Description */}
+                        <motion.p
+                          className="text-sm leading-relaxed text-gray-400 md:text-base"
+                          whileHover={{ x: 5 }}
+                        >
+                          {step.description}
+                        </motion.p>
 
-                    {/* Hover effect overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-                  </div>
-                </div>
-              );
-            })}
+                        {/* Arrow indicator */}
+                        <motion.div
+                          className="mt-6 flex items-center gap-2 text-white/60"
+                          initial={{ opacity: 0, x: -10 }}
+                          whileHover={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <span className="text-sm">Learn more</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </motion.div>
+                      </div>
+
+                      {/* Floating elements inside card */}
+                      <motion.div
+                        className="absolute top-20 right-4 h-3 w-3 rounded-full bg-white/20"
+                        animate={{
+                          y: [-10, 10, -10],
+                          opacity: [0.2, 0.8, 0.2],
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          delay: index * 0.5,
+                        }}
+                      />
+
+                      <motion.div
+                        className="absolute bottom-8 left-4 h-2 w-2 rounded-full bg-white/30"
+                        animate={{
+                          scale: [0.5, 1.5, 0.5],
+                          opacity: [0.3, 1, 0.3],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          delay: index * 0.3,
+                        }}
+                      />
+
+                      {/* Shimmer effect */}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                        animate={isHovered ? { x: ["100%", "-100%"] } : {}}
+                        transition={{
+                          duration: 1.5,
+                          ease: "easeInOut" as const,
+                        }}
+                      />
+                    </motion.div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Call to action */}
-        <div className="mt-16 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:from-pink-600 hover:to-purple-700 hover:shadow-xl">
-            <span>Ready to start?</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </div>
+          {/* Call to Action */}
+          <motion.div variants={headerVariants} className="text-center">
+            <motion.div
+              className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-r from-purple-900/20 via-pink-900/20 to-blue-900/20 p-12 backdrop-blur-xl"
+              whileHover={{ scale: 1.02 }}
+              transition={{
+                type: "spring" as const,
+                stiffness: 400,
+                damping: 25,
+              }}
+            >
+              <motion.h3
+                className="mb-4 text-2xl font-bold text-white md:text-3xl"
+                whileHover={{ scale: 1.05 }}
+              >
+                Ready to Begin?
+              </motion.h3>
+
+              <motion.p
+                className="mb-8 text-gray-400"
+                whileHover={{ scale: 1.02 }}
+              >
+                Join thousands of collectors in the most advanced NFT ecosystem
+              </motion.p>
+
+              <motion.button
+                className="group relative overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-12 py-4 font-semibold text-white shadow-2xl"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <motion.span
+                  className="relative z-10 flex items-center gap-2"
+                  whileHover={{ x: 5 }}
+                >
+                  Start Minting
+                  <motion.div
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </motion.div>
+                </motion.span>
+
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-purple-700 to-pink-700"
+                  initial={{ x: "100%" }}
+                  whileHover={{ x: 0 }}
+                  transition={{ duration: 0.3 }}
+                />
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
