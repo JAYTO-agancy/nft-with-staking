@@ -12,7 +12,7 @@ contract DeployScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy NFT contract
-        StakableNFT nft = new StakableNFT("ipfs://QmYourIPFSHash/");
+        StakableNFT nft = new StakableNFT("ipfs://QmYourIPFSHash/"); // TODO: Заменить QmYourIPFSHash на актуальный CID метаданных
 
         // Deploy Reward Token
         RewardToken rewardToken = new RewardToken();
