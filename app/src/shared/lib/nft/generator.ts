@@ -119,8 +119,8 @@ export async function generateNFTWithRarity(
           edition: nftId,
           rarity: rarityName,
           metadata,
-          imageUrl: imageCID ? `ipfs://${imageCID}` : `/nft/images/${nftId}.png`,
-          jsonUrl: jsonCID ? `ipfs://${jsonCID}` : `/nft/json/${nftId}.json`,
+          imageUrl: imageCID ? `https://purple-adorable-coyote-397.mypinata.cloud/ipfs/${imageCID}` : `/nft/images/${nftId}.png`,
+          jsonUrl: jsonCID ? `https://purple-adorable-coyote-397.mypinata.cloud/ipfs/${jsonCID}` : `/nft/json/${nftId}.json`,
         });
       } catch (error) {
         console.error("Post-processing error:", error);
