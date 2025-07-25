@@ -19,7 +19,11 @@ export async function createPinataGroup(
 ): Promise<{ id: string; name: string; created_at: string }> {
   try {
     const group = await pinata.groups.public.create({ name });
-    return group;
+    return {
+      id: group.id,
+      name: group.name,
+      created_at: group.createdAt,
+    };
   } catch (error) {
     console.error("Pinata group creation error:", error);
     throw error;
@@ -28,11 +32,12 @@ export async function createPinataGroup(
 
 export async function uploadFileToPinata(filePath: string): Promise<string> {
   try {
-    const file = fs.createReadStream(filePath);
+    const blob = new Blob([fs.readFileSync(filePath)]);
     const fileName = path.basename(filePath);
-    const upload = await pinata.upload.public
-      .file(file)
-      .addMetadata({ name: fileName });
+    const file = new File([blob], fileName, {
+      type: "application/octet-stream",
+    });
+    const upload = await pinata.upload.public.file(file);
     return upload.cid;
   } catch (error) {
     console.error("Pinata upload error:", error);
@@ -45,12 +50,12 @@ export async function uploadFileToPinataWithGroup(
   groupId: string,
 ): Promise<string> {
   try {
-    const file = fs.createReadStream(filePath);
+    const blob = new Blob([fs.readFileSync(filePath)]);
     const fileName = path.basename(filePath);
-    const upload = await pinata.upload.public
-      .file(file)
-      .addMetadata({ name: fileName })
-      .group(groupId);
+    const file = new File([blob], fileName, {
+      type: "application/octet-stream",
+    });
+    const upload = await pinata.upload.public.file(file).group(groupId);
     return upload.cid;
   } catch (error) {
     console.error("Pinata upload (group) error:", error);
@@ -62,7 +67,24 @@ export async function uploadFolderToPinata(
   folderPath: string,
 ): Promise<string> {
   try {
-    const upload = await pinata.upload.public.folder(folderPath);
+    // Читаем все файлы из папки и создаем массив File объектов
+    const files: File[] = [];
+    const fileNames = fs.readdirSync(folderPath);
+
+    for (const fileName of fileNames) {
+      const filePath = path.join(folderPath, fileName);
+      const stats = fs.statSync(filePath);
+
+      if (stats.isFile()) {
+        const blob = new Blob([fs.readFileSync(filePath)]);
+        const file = new File([blob], fileName, {
+          type: "application/octet-stream",
+        });
+        files.push(file);
+      }
+    }
+
+    const upload = await pinata.upload.public.fileArray(files);
     return upload.cid;
   } catch (error) {
     console.error("Pinata folder upload error:", error);
@@ -72,7 +94,7 @@ export async function uploadFolderToPinata(
 
 export async function unpinFromPinata(cid: string): Promise<void> {
   try {
-    await pinata.files.public.delete(cid);
+    await pinata.files.public.delete([cid]);
   } catch (error) {
     console.error("Pinata unpin error:", error);
     throw error;
