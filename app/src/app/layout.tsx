@@ -5,6 +5,11 @@ import { Toaster } from "@/shared/ui/kit/sonner";
 import { Header } from "@/features/header";
 import { Footer } from "@/features/footer";
 import { getSiteTitle } from "@/shared/lib/seo";
+import "@rainbow-me/rainbowkit/styles.css";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { sepolia } from "wagmi/chains";
+import { QueryClient } from "@tanstack/react-query";
+import { AppWalletProvider } from "@/shared/context/app-wallet";
 
 const balooFont = Baloo_2({
   variable: "--font-baloo",
@@ -19,22 +24,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body
         className={`${balooFont.variable} ${balooFont.className} antialiased`}
       >
-        <div className="relative flex min-h-screen flex-col">
-          <Header />
-          <main className="grow">{children}</main>
-          <Footer />
-        </div>
-        <Toaster richColors />
+        <AppWalletProvider>
+          <div className="relative flex min-h-screen flex-col">
+            <Header />
+            <main className="grow">{children}</main>
+            <Footer />
+          </div>
+          <Toaster richColors />
+        </AppWalletProvider>
       </body>
     </html>
   );

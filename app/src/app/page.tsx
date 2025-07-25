@@ -1,7 +1,70 @@
-export default async function Home() {
+"use client";
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { useState } from "react";
+import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
+import { HeroSection } from "./_sections/HeroSection";
+import { HowBuySection } from "./_sections/HowBuySection";
+import { MintSection } from "./_sections/MintSection";
+import { LastMintedSection } from "./_sections/LastMintedSection";
+import { StatsSection } from "./_sections/StatsSection";
+import { ProjectStorySection } from "./_sections/ProjectStorySection";
+
+const CONTRACT_ADDRESS = "0x43ccC21884F39E40edef71980C93aD87FDe99763";
+
+function randomBytes32() {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
   return (
-    <div className="container">
-      <div className="py-10">Main page</div>
-    </div>
+    "0x" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+export default function Home() {
+  const { isConnected } = useAccount();
+  const [minting, setMinting] = useState(false);
+  const [mintedNft, setMintedNft] = useState<null | {
+    imageUrl: string;
+    rarity: string;
+    txHash: string;
+  }>(null);
+  const { writeContract, data: txHash } = useWriteContract();
+  const { isLoading: txPending, isSuccess: txSuccess } =
+    useWaitForTransactionReceipt({ hash: txHash });
+
+  async function handleMint() {
+    setMinting(true);
+    setMintedNft(null);
+    try {
+      const secret = randomBytes32();
+      await writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: StakableNFTAbi,
+        functionName: "mint",
+        args: [1n, secret as `0x${string}`],
+        value: BigInt("10000000000000000"),
+      });
+      // TODO: после успеха — запрос к backend для генерации PNG/JSON и загрузки в Pinata
+      // setMintedNft({ imageUrl, rarity, txHash });
+    } finally {
+      setMinting(false);
+    }
+  }
+
+  return (
+    <>
+      <HeroSection onMint={isConnected ? handleMint : undefined} />
+      <HowBuySection />
+      <MintSection onMint={handleMint} mintedNft={mintedNft} />
+      <LastMintedSection />
+      <StatsSection />
+      <ProjectStorySection />
+    </>
   );
 }

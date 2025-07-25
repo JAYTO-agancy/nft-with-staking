@@ -1,15 +1,43 @@
-import { LogoLink } from "@/shared/ui/logo";
-import React from "react";
+import { cn } from "@/shared/lib/css";
+import { Twitter, Send } from "lucide-react";
 
-interface Props {
-  className?: string;
-}
-
-export const Footer: React.FC<Props> = ({ className }) => {
+export const Footer: React.FC<{ className?: string }> = ({ className }) => {
   return (
-    <footer className={className}>
-      <div className="container border-t border-black pt-8 pb-4">
-        <LogoLink />
+    <footer
+      className={cn(
+        "w-full border-t border-white/10 backdrop-blur-xl",
+        className,
+      )}
+    >
+      <div className="container mx-auto flex flex-col items-center justify-between gap-6 px-4 py-8 sm:flex-row sm:gap-0 sm:px-6 lg:px-8">
+        <div className="text-center sm:text-left">
+          <span className="text-lg font-semibold tracking-wide text-white">
+            Plumffel NFT
+          </span>
+          <span className="ml-2 text-xs text-gray-400">
+            © {new Date().getFullYear()} All rights reserved.
+          </span>
+        </div>
+        <div className="flex gap-4">
+          <a
+            href="https://x.com/yourproject"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Twitter"
+            className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10"
+          >
+            <Twitter className="h-6 w-6" />
+          </a>
+          <a
+            href="https://t.me/yourproject"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Telegram"
+            className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10"
+          >
+            <Send className="h-6 w-6" />
+          </a>
+        </div>
       </div>
     </footer>
   );

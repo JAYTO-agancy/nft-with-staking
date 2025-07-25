@@ -1,49 +1,102 @@
-// @ts-ignore
-import pinataSDK from '@pinata/sdk';
-import fs from 'fs';
-import path from 'path';
+import { PinataSDK } from "pinata";
+import fs from "fs";
+import path from "path";
 
-const PINATA_API_KEY = process.env.PINATA_API_KEY;
-const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
+const PINATA_JWT = process.env.PINATA_JWT;
+const PINATA_GATEWAY = process.env.PINATA_GATEWAY;
 
-if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
-  throw new Error('Pinata API keys are not set in environment variables');
+if (!PINATA_JWT) {
+  throw new Error("PINATA_JWT is not set in environment variables");
 }
 
-const pinata = new pinataSDK(PINATA_API_KEY, PINATA_SECRET_API_KEY);
+const pinata = new PinataSDK({
+  pinataJwt: PINATA_JWT,
+  pinataGateway: PINATA_GATEWAY || undefined,
+});
 
-export async function uploadFileToPinata(filePath: string): Promise<string> {
+export async function createPinataGroup(
+  name: string,
+): Promise<{ id: string; name: string; created_at: string }> {
   try {
-    const readableStream = fs.createReadStream(filePath);
-    const fileName = path.basename(filePath);
-    const options = {
-      pinataMetadata: {
-        name: fileName,
-      },
+    const group = await pinata.groups.public.create({ name });
+    return {
+      id: group.id,
+      name: group.name,
+      created_at: group.createdAt,
     };
-    const result = await pinata.pinFileToIPFS(readableStream, options);
-    return result.IpfsHash;
   } catch (error) {
-    console.error('Pinata upload error:', error);
+    console.error("Pinata group creation error:", error);
     throw error;
   }
 }
 
-export async function uploadFolderToPinata(folderPath: string): Promise<string> {
+export async function uploadFileToPinata(filePath: string): Promise<string> {
   try {
-    const result = await pinata.pinFromFS(folderPath);
-    return result.IpfsHash;
+    const blob = new Blob([fs.readFileSync(filePath)]);
+    const fileName = path.basename(filePath);
+    const file = new File([blob], fileName, {
+      type: "application/octet-stream",
+    });
+    const upload = await pinata.upload.public.file(file);
+    return upload.cid;
   } catch (error) {
-    console.error('Pinata folder upload error:', error);
+    console.error("Pinata upload error:", error);
+    throw error;
+  }
+}
+
+export async function uploadFileToPinataWithGroup(
+  filePath: string,
+  groupId: string,
+): Promise<string> {
+  try {
+    const blob = new Blob([fs.readFileSync(filePath)]);
+    const fileName = path.basename(filePath);
+    const file = new File([blob], fileName, {
+      type: "application/octet-stream",
+    });
+    const upload = await pinata.upload.public.file(file).group(groupId);
+    return upload.cid;
+  } catch (error) {
+    console.error("Pinata upload (group) error:", error);
+    throw error;
+  }
+}
+
+export async function uploadFolderToPinata(
+  folderPath: string,
+): Promise<string> {
+  try {
+    // Читаем все файлы из папки и создаем массив File объектов
+    const files: File[] = [];
+    const fileNames = fs.readdirSync(folderPath);
+
+    for (const fileName of fileNames) {
+      const filePath = path.join(folderPath, fileName);
+      const stats = fs.statSync(filePath);
+
+      if (stats.isFile()) {
+        const blob = new Blob([fs.readFileSync(filePath)]);
+        const file = new File([blob], fileName, {
+          type: "application/octet-stream",
+        });
+        files.push(file);
+      }
+    }
+
+    const upload = await pinata.upload.public.fileArray(files);
+    return upload.cid;
+  } catch (error) {
+    console.error("Pinata folder upload error:", error);
     throw error;
   }
 }
 
 export async function unpinFromPinata(cid: string): Promise<void> {
   try {
-    await pinata.unpin(cid);
+    await pinata.files.public.delete([cid]);
   } catch (error) {
-    console.error('Pinata unpin error:', error);
+    console.error("Pinata unpin error:", error);
     throw error;
   }
-} 
+}

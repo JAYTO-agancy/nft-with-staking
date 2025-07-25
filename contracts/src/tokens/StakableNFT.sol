@@ -7,6 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {IStakableNFT} from "../interfaces/IStakableNFT.sol";
 import {Errors} from "../libs/Errors.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
     uint256 private _tokenIdCounter;
@@ -205,6 +206,12 @@ contract StakableNFT is ERC721, ERC721Enumerable, Ownable, IStakableNFT {
 
     function _baseURI() internal view override returns (string memory) {
         return _baseTokenURI;
+    }
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        _requireOwned(tokenId);
+        string memory baseURI = _baseURI();
+        return bytes(baseURI).length > 0 ? string.concat(baseURI, Strings.toString(tokenId), ".json") : "";
     }
 
     // Required overrides for ERC721Enumerable
