@@ -8,6 +8,8 @@ interface GenerationResult {
   error?: string;
 }
 
+import { uploadFileToPinata } from './pinata';
+
 export async function generateNFTWithRarity(
   rarityName: string,
   nftId: number,
@@ -98,13 +100,27 @@ export async function generateNFTWithRarity(
 
         console.log(`✅ NFT files saved: ${imageDest} and ${jsonDest}`);
 
+        // --- Pinata upload ---
+        let imageCID = null;
+        let jsonCID = null;
+        try {
+          imageCID = await uploadFileToPinata(imageDest);
+        } catch (e) {
+          console.error('Pinata image upload failed:', e);
+        }
+        try {
+          jsonCID = await uploadFileToPinata(jsonDest);
+        } catch (e) {
+          console.error('Pinata json upload failed:', e);
+        }
+
         resolve({
           success: true,
           edition: nftId,
           rarity: rarityName,
           metadata,
-          imageUrl: `/nft/images/${nftId}.png`,
-          jsonUrl: `/nft/json/${nftId}.json`,
+          imageUrl: imageCID ? `ipfs://${imageCID}` : `/nft/images/${nftId}.png`,
+          jsonUrl: jsonCID ? `ipfs://${jsonCID}` : `/nft/json/${nftId}.json`,
         });
       } catch (error) {
         console.error("Post-processing error:", error);

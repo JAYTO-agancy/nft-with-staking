@@ -9,11 +9,11 @@ const {
 const network = NETWORK.eth;
 
 // General metadata for Ethereum
-const namePrefix = "Nifty Frog";
+const namePrefix = "Plumffel NFT";
 const description =
-  "Dive into a whimsical world of Nifty Frogs – a vibrant NFT collection where every digital amphibian isn’t just cute, but a tokens-making machine! These aren’t your average pond-dwellers; they’re staking superstars with real utility, turning your wallet into a lily pad of passive incom";
-const baseUri =
-  "https://link.storjshare.io/s/jx62bslcpe7lpfwo7qtqtxtws76q/nft-frog/images";
+  "Plumffel are fluffy, adorable plush toys — an NFT collection where each character is unique, charming, and created to bring joy to its owner. Collect your own set of Plumffels and participate in staking!";
+// baseUri will be replaced with ipfs://<CID> after upload to Pinata/IPFS
+const baseUri = "";
 
 const solanaMetadata = {
   symbol: "YC",
