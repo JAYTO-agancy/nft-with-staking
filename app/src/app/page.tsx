@@ -1,6 +1,4 @@
 "use client";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Button } from "@/shared/ui/kit/button";
 import {
   useAccount,
   useWriteContract,
@@ -8,6 +6,12 @@ import {
 } from "wagmi";
 import { useState } from "react";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
+import { HeroSection } from "./_sections/HeroSection";
+import { HowBuySection } from "./_sections/HowBuySection";
+import { MintSection } from "./_sections/MintSection";
+import { LastMintedSection } from "./_sections/LastMintedSection";
+import { StatsSection } from "./_sections/StatsSection";
+import { ProjectStorySection } from "./_sections/ProjectStorySection";
 
 const CONTRACT_ADDRESS = "0x43ccC21884F39E40edef71980C93aD87FDe99763";
 
@@ -23,7 +27,7 @@ function randomBytes32() {
 }
 
 export default function Home() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const [minting, setMinting] = useState(false);
   const [mintedNft, setMintedNft] = useState<null | {
     imageUrl: string;
@@ -44,7 +48,7 @@ export default function Home() {
         abi: StakableNFTAbi,
         functionName: "mint",
         args: [1n, secret as `0x${string}`],
-        value: BigInt("10000000000000000"), // если mint платный
+        value: BigInt("10000000000000000"),
       });
       // TODO: после успеха — запрос к backend для генерации PNG/JSON и загрузки в Pinata
       // setMintedNft({ imageUrl, rarity, txHash });
@@ -54,33 +58,13 @@ export default function Home() {
   }
 
   return (
-    <div className="container flex flex-col items-center gap-8 py-10">
-      <ConnectButton />
-      {isConnected && (
-        <Button onClick={handleMint} disabled={minting || txPending}>
-          {minting || txPending ? "Minting..." : "Mint NFT"}
-        </Button>
-      )}
-      {txHash && (
-        <a
-          href={`https://sepolia.etherscan.io/tx/${txHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline"
-        >
-          View on Etherscan
-        </a>
-      )}
-      {mintedNft && (
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <img
-            src={mintedNft.imageUrl}
-            alt="Your NFT"
-            className="h-64 w-64 rounded-xl border"
-          />
-          <div className="text-lg font-bold">Rarity: {mintedNft.rarity}</div>
-        </div>
-      )}
-    </div>
+    <>
+      <HeroSection onMint={isConnected ? handleMint : undefined} />
+      <HowBuySection />
+      <MintSection onMint={handleMint} mintedNft={mintedNft} />
+      <LastMintedSection />
+      <StatsSection />
+      <ProjectStorySection />
+    </>
   );
 }
