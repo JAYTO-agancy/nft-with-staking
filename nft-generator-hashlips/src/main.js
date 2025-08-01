@@ -43,15 +43,6 @@ const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 
 let hashlipsGiffer = null;
 
-const rarityLimits = {
-  // Лимиты для каждой редкости
-  1: 6000, // Common
-  2: 2500, // Uncommon
-  3: 1000, // Rare
-  4: 450, // Epic
-  5: 50, // Legendary
-};
-
 let rarityCounts = {
   1: 0, // Common
   2: 0, // Uncommon
@@ -542,17 +533,6 @@ const createDna = (_layers) => {
     nftRarity = 1; // Common (все остальное)
   }
 
-  // Шаг 3: Проверяем лимиты редкости
-  if (
-    rarityCounts[nftRarity] >=
-    rarityLimits[nftRarity]
-  ) {
-    console.log(
-      `❌ Лимит для редкости ${nftRarity} (${rarityCounts[nftRarity]}/${rarityLimits[nftRarity]}) достиг! Пропускаем...`
-    );
-    return null;
-  }
-
   // Шаг 4: Увеличиваем счетчик и возвращаем DNA
   rarityCounts[nftRarity]++;
   return {
@@ -609,15 +589,19 @@ function shuffle(array) {
 
 // Маппинг названий редкости на числовые значения
 const rarityNameToNumber = {
-  'common': 1,
-  'uncommon': 2,
-  'rare': 3,
-  'epic': 4,
-  'legendary': 5
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 4,
+  legendary: 5,
 };
 
 // Функция для проверки, соответствует ли DNA требуемой редкости
-const checkDnaMatchesRarity = (dna, layers, targetRarity) => {
+const checkDnaMatchesRarity = (
+  dna,
+  layers,
+  targetRarity
+) => {
   let rarityCurrentCounts = {
     1: 0,
     2: 0,
@@ -627,22 +611,35 @@ const checkDnaMatchesRarity = (dna, layers, targetRarity) => {
   };
 
   // Подсчитываем элементы каждой редкости в DNA
-  dna.split(DNA_DELIMITER).forEach((dnaItem, index) => {
-    const cleanedDna = cleanDna(dnaItem);
-    const layer = layers[index];
-    const element = layer.elements.find(e => e.id == cleanedDna);
-    
-    if (element) {
-      const filename = element.filename;
-      const rarityMatch = filename.match(/#(\d+)\./);
-      const elementRarity = rarityMatch ? parseInt(rarityMatch[1]) : 1;
-      rarityCurrentCounts[elementRarity]++;
-    }
-  });
+  dna
+    .split(DNA_DELIMITER)
+    .forEach((dnaItem, index) => {
+      const cleanedDna =
+        cleanDna(dnaItem);
+      const layer = layers[index];
+      const element =
+        layer.elements.find(
+          (e) => e.id == cleanedDna
+        );
+
+      if (element) {
+        const filename =
+          element.filename;
+        const rarityMatch =
+          filename.match(/#(\d+)\./);
+        const elementRarity =
+          rarityMatch
+            ? parseInt(rarityMatch[1])
+            : 1;
+        rarityCurrentCounts[
+          elementRarity
+        ]++;
+      }
+    });
 
   // Определяем редкость NFT по тем же правилам
   let nftRarity;
-  
+
   if (
     rarityCurrentCounts[1] >= 1 &&
     (rarityCurrentCounts[2] >= 2 ||
@@ -672,47 +669,73 @@ const checkDnaMatchesRarity = (dna, layers, targetRarity) => {
 };
 
 // Новая функция для создания DNA с конкретной редкостью
-const createDnaWithRarity = (_layers, targetRarity, maxAttempts = 10000) => {
+const createDnaWithRarity = (
+  _layers,
+  targetRarity,
+  maxAttempts = 10000
+) => {
   let attempts = 0;
-  
+
   while (attempts < maxAttempts) {
     const dnaData = createDna(_layers);
-    
-    if (dnaData && dnaData.rarityLevel === targetRarity) {
+
+    if (
+      dnaData &&
+      dnaData.rarityLevel ===
+        targetRarity
+    ) {
       return dnaData;
     }
-    
+
     attempts++;
   }
-  
-  console.log(`⚠️ Не удалось создать NFT с редкостью ${targetRarity} после ${maxAttempts} попыток`);
+
+  console.log(
+    `⚠️ Не удалось создать NFT с редкостью ${targetRarity} после ${maxAttempts} попыток`
+  );
   return null;
 };
 
-const startCreating = async (requestedRarity = null, requestedCount = 1) => {
+const startCreating = async (
+  requestedRarity = null,
+  requestedCount = 1
+) => {
   let layerConfigIndex = 0;
   let editionCount = 1;
   let failedCount = 0;
   let abstractedIndexes = [];
-  
+
   // Преобразуем название редкости в число
   let targetRarity = null;
   if (requestedRarity) {
-    targetRarity = rarityNameToNumber[requestedRarity.toLowerCase()];
+    targetRarity =
+      rarityNameToNumber[
+        requestedRarity.toLowerCase()
+      ];
     if (!targetRarity) {
-      console.error(`❌ Неизвестная редкость: ${requestedRarity}`);
-      console.log(`Доступные редкости: Common, Uncommon, Rare, Epic, Legendary`);
+      console.error(
+        `❌ Неизвестная редкость: ${requestedRarity}`
+      );
+      console.log(
+        `Доступные редкости: Common, Uncommon, Rare, Epic, Legendary`
+      );
       process.exit(1);
     }
-    console.log(`🎯 Генерация ${requestedCount} NFT с редкостью: ${requestedRarity}`);
+    console.log(
+      `🎯 Генерация ${requestedCount} NFT с редкостью: ${requestedRarity}`
+    );
   }
 
   // Если указана конкретная редкость, генерируем только запрошенное количество
-  const totalToGenerate = targetRarity ? requestedCount : 
-    layerConfigurations[layerConfigurations.length - 1].growEditionSizeTo;
+  const totalToGenerate = targetRarity
+    ? requestedCount
+    : layerConfigurations[
+        layerConfigurations.length - 1
+      ].growEditionSizeTo;
 
   for (
-    let i = network == NETWORK.sol ? 0 : 1;
+    let i =
+      network == NETWORK.sol ? 0 : 1;
     i <= totalToGenerate;
     i++
   ) {
@@ -720,34 +743,58 @@ const startCreating = async (requestedRarity = null, requestedCount = 1) => {
   }
 
   if (shuffleLayerConfigurations) {
-    abstractedIndexes = shuffle(abstractedIndexes);
+    abstractedIndexes = shuffle(
+      abstractedIndexes
+    );
   }
 
   debugLogs
-    ? console.log("Editions left to create: ", abstractedIndexes)
+    ? console.log(
+        "Editions left to create: ",
+        abstractedIndexes
+      )
     : null;
 
   let generatedCount = 0;
 
-  while (layerConfigIndex < layerConfigurations.length && generatedCount < totalToGenerate) {
+  while (
+    layerConfigIndex <
+      layerConfigurations.length &&
+    generatedCount < totalToGenerate
+  ) {
     const layers = layersSetup(
-      layerConfigurations[layerConfigIndex].layersOrder
+      layerConfigurations[
+        layerConfigIndex
+      ].layersOrder
     );
 
     while (
-      editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo &&
+      editionCount <=
+        layerConfigurations[
+          layerConfigIndex
+        ].growEditionSizeTo &&
       generatedCount < totalToGenerate
     ) {
       let dnaData;
-      
+
       // Если указана конкретная редкость, используем специальную функцию
       if (targetRarity) {
-        dnaData = createDnaWithRarity(layers, targetRarity);
+        dnaData = createDnaWithRarity(
+          layers,
+          targetRarity
+        );
         if (!dnaData) {
-          console.log(`❌ Не удалось создать NFT с редкостью ${requestedRarity}`);
+          console.log(
+            `❌ Не удалось создать NFT с редкостью ${requestedRarity}`
+          );
           failedCount++;
-          if (failedCount >= uniqueDnaTorrance) {
-            console.log(`Слишком много неудачных попыток. Завершение процесса.`);
+          if (
+            failedCount >=
+            uniqueDnaTorrance
+          ) {
+            console.log(
+              `Слишком много неудачных попыток. Завершение процесса.`
+            );
             break;
           }
           continue;
@@ -755,33 +802,49 @@ const startCreating = async (requestedRarity = null, requestedCount = 1) => {
       } else {
         dnaData = createDna(layers);
         if (!dnaData) {
-          console.log("Пропуск NFT из-за лимита редкости");
+          console.log(
+            "Пропуск NFT из-за лимита редкости"
+          );
           continue;
         }
       }
 
-      const { dna: newDna, rarityLevel } = dnaData;
+      const {
+        dna: newDna,
+        rarityLevel,
+      } = dnaData;
 
-      if (isDnaUnique(dnaList, newDna)) {
-        let results = constructLayerToDna(newDna, layers);
+      if (
+        isDnaUnique(dnaList, newDna)
+      ) {
+        let results =
+          constructLayerToDna(
+            newDna,
+            layers
+          );
 
         // Проверка на Jacket/Neck
         const clothLayer = results.find(
-          (layer) => layer.name === "Cloth"
+          (layer) =>
+            layer.name === "Cloth"
         );
         const neckLayer = results.find(
-          (layer) => layer.name === "Neck"
+          (layer) =>
+            layer.name === "Neck"
         );
 
         const hasJacket =
-          clothLayer?.selectedElement?.name.startsWith("Jacket");
+          clothLayer?.selectedElement?.name.startsWith(
+            "Jacket"
+          );
 
         if (hasJacket && neckLayer) {
           console.log(
             `🔄 Jacket detected ("${clothLayer.selectedElement.name}"), removing Neck layer`
           );
           results = results.filter(
-            (layer) => layer.name !== "Neck"
+            (layer) =>
+              layer.name !== "Neck"
           );
         }
 
@@ -793,66 +856,112 @@ const startCreating = async (requestedRarity = null, requestedCount = 1) => {
 
         let loadedElements = [];
         results.forEach((layer) => {
-          loadedElements.push(loadLayerImg(layer));
+          loadedElements.push(
+            loadLayerImg(layer)
+          );
         });
 
-        await Promise.all(loadedElements).then((renderObjectArray) => {
-          debugLogs ? console.log("Clearing canvas") : null;
-          ctx.clearRect(0, 0, format.width, format.height);
-          
+        await Promise.all(
+          loadedElements
+        ).then((renderObjectArray) => {
+          debugLogs
+            ? console.log(
+                "Clearing canvas"
+              )
+            : null;
+          ctx.clearRect(
+            0,
+            0,
+            format.width,
+            format.height
+          );
+
           if (gif.export) {
-            hashlipsGiffer = new HashlipsGiffer(
-              canvas,
-              ctx,
-              `${buildDir}/gifs/${abstractedIndexes[0]}.gif`,
-              gif.repeat,
-              gif.quality,
-              gif.delay
-            );
+            hashlipsGiffer =
+              new HashlipsGiffer(
+                canvas,
+                ctx,
+                `${buildDir}/gifs/${abstractedIndexes[0]}.gif`,
+                gif.repeat,
+                gif.quality,
+                gif.delay
+              );
             hashlipsGiffer.start();
           }
-          
+
           if (background.generate) {
             drawBackground();
           }
-          
-          renderObjectArray.forEach((renderObject, index) => {
-            drawElement(
-              renderObject,
-              index,
-              layerConfigurations[layerConfigIndex].layersOrder.length
-            );
-            if (gif.export) {
-              hashlipsGiffer.add();
+
+          renderObjectArray.forEach(
+            (renderObject, index) => {
+              drawElement(
+                renderObject,
+                index,
+                layerConfigurations[
+                  layerConfigIndex
+                ].layersOrder.length
+              );
+              if (gif.export) {
+                hashlipsGiffer.add();
+              }
             }
-          });
-          
+          );
+
           if (gif.export) {
             hashlipsGiffer.stop();
           }
-          
+
           debugLogs
-            ? console.log("Editions left to create: ", abstractedIndexes)
+            ? console.log(
+                "Editions left to create: ",
+                abstractedIndexes
+              )
             : null;
-            
-          saveImage(abstractedIndexes[0]);
-          addMetadata(newDna, abstractedIndexes[0], rarityLevel);
-          saveMetaDataSingleFile(abstractedIndexes[0]);
-          
-          const rarityTiers = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+
+          saveImage(
+            abstractedIndexes[0]
+          );
+          addMetadata(
+            newDna,
+            abstractedIndexes[0],
+            rarityLevel
+          );
+          saveMetaDataSingleFile(
+            abstractedIndexes[0]
+          );
+
+          const rarityTiers = [
+            "Common",
+            "Uncommon",
+            "Rare",
+            "Epic",
+            "Legendary",
+          ];
           console.log(
-            `✅ Created edition: ${abstractedIndexes[0]}, Rarity: ${rarityTiers[rarityLevel - 1]}, DNA: ${sha1(newDna)}`
+            `✅ Created edition: ${
+              abstractedIndexes[0]
+            }, Rarity: ${
+              rarityTiers[
+                rarityLevel - 1
+              ]
+            }, DNA: ${sha1(newDna)}`
           );
         });
-        
-        dnaList.add(filterDNAOptions(newDna));
+
+        dnaList.add(
+          filterDNAOptions(newDna)
+        );
         editionCount++;
         generatedCount++;
         abstractedIndexes.shift();
       } else {
         console.log("DNA exists!");
         failedCount++;
-        if (failedCount >= uniqueDnaTorrance) {
+        if (
+          failedCount >=
+          uniqueDnaTorrance
+        ) {
           console.log(
             `You need more layers or elements to grow your edition to ${layerConfigurations[layerConfigIndex].growEditionSizeTo} artworks!`
           );
@@ -863,11 +972,27 @@ const startCreating = async (requestedRarity = null, requestedCount = 1) => {
     layerConfigIndex++;
   }
 
-  writeMetaData(JSON.stringify(metadataList, null, 2));
-  
+  writeMetaData(
+    JSON.stringify(
+      metadataList,
+      null,
+      2
+    )
+  );
+
   if (targetRarity) {
-    const rarityTiers = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
-    console.log(`\n✅ Успешно сгенерировано ${generatedCount} NFT с редкостью ${rarityTiers[targetRarity - 1]}`);
+    const rarityTiers = [
+      "Common",
+      "Uncommon",
+      "Rare",
+      "Epic",
+      "Legendary",
+    ];
+    console.log(
+      `\n✅ Успешно сгенерировано ${generatedCount} NFT с редкостью ${
+        rarityTiers[targetRarity - 1]
+      }`
+    );
   }
 };
 
