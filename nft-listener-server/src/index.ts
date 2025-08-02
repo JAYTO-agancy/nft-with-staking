@@ -43,9 +43,10 @@ async function initializeServices() {
     const contractConnected =
       await contractListener.testConnection();
     if (!contractConnected) {
-      throw new Error(
-        "Failed to connect to contract"
+      console.warn(
+        "⚠️ Contract connection failed, but continuing..."
       );
+      // Don't throw error, just warn - server can still work for manual job creation
     }
 
     const pinataConnected =
@@ -70,12 +71,12 @@ async function initializeServices() {
 }
 
 // Start contract listening
-function startContractListener() {
+async function startContractListener() {
   console.log(
     "🎧 Starting contract event listener..."
   );
 
-  contractListener.startListening(
+  await contractListener.startListening(
     async (event) => {
       try {
         console.log(
@@ -136,11 +137,9 @@ app.get("/job/:jobId", (req, res) => {
       jobManager.getJob(jobId);
 
     if (!job) {
-      return res
-        .status(404)
-        .json({
-          error: "Job not found",
-        });
+      return res.status(404).json({
+        error: "Job not found",
+      });
     }
 
     res.json({ job });
@@ -149,11 +148,9 @@ app.get("/job/:jobId", (req, res) => {
       "Error getting job:",
       error
     );
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-      });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 });
 
@@ -168,11 +165,9 @@ app.get(
         req.params.tokenId
       );
       if (isNaN(tokenId)) {
-        return res
-          .status(400)
-          .json({
-            error: "Invalid token ID",
-          });
+        return res.status(400).json({
+          error: "Invalid token ID",
+        });
       }
 
       const job =
@@ -181,12 +176,10 @@ app.get(
         );
 
       if (!job) {
-        return res
-          .status(404)
-          .json({
-            error:
-              "Job not found for this token",
-          });
+        return res.status(404).json({
+          error:
+            "Job not found for this token",
+        });
       }
 
       res.json({ job });
@@ -195,12 +188,9 @@ app.get(
         "Error getting job by token ID:",
         error
       );
-      res
-        .status(500)
-        .json({
-          error:
-            "Internal server error",
-        });
+      res.status(500).json({
+        error: "Internal server error",
+      });
     }
   }
 );
@@ -222,12 +212,9 @@ app.get(
         "Error getting user jobs:",
         error
       );
-      res
-        .status(500)
-        .json({
-          error:
-            "Internal server error",
-        });
+      res.status(500).json({
+        error: "Internal server error",
+      });
     }
   }
 );
@@ -244,13 +231,85 @@ app.get("/stats", (req, res) => {
       "Error getting stats:",
       error
     );
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-      });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 });
+
+/**
+ * Get contract statistics
+ */
+app.get(
+  "/contract/stats",
+  async (req, res) => {
+    try {
+      const contractStats =
+        await contractListener.getContractStats();
+      res.json({ contractStats });
+    } catch (error) {
+      console.error(
+        "Error getting contract stats:",
+        error
+      );
+      res.status(500).json({
+        error: "Internal server error",
+      });
+    }
+  }
+);
+
+/**
+ * Get NFT statistics (rarity distribution, recent mints, etc.)
+ */
+app.get(
+  "/nft/statistics",
+  async (req, res) => {
+    try {
+      const statistics =
+        contractListener.getStatistics();
+
+      if (!statistics) {
+        return res.status(404).json({
+          error:
+            "Statistics not available yet",
+        });
+      }
+
+      res.json({ statistics });
+    } catch (error) {
+      console.error(
+        "Error getting NFT statistics:",
+        error
+      );
+      res.status(500).json({
+        error: "Internal server error",
+      });
+    }
+  }
+);
+
+/**
+ * Get total supply
+ */
+app.get(
+  "/contract/supply",
+  async (req, res) => {
+    try {
+      const totalSupply =
+        await contractListener.getTotalSupply();
+      res.json({ totalSupply });
+    } catch (error) {
+      console.error(
+        "Error getting total supply:",
+        error
+      );
+      res.status(500).json({
+        error: "Internal server error",
+      });
+    }
+  }
+);
 
 /**
  * Manual job creation (for testing)
@@ -266,12 +325,10 @@ app.post(
       } = req.body;
 
       if (!tokenId || !userAddress) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "tokenId and userAddress are required",
-          });
+        return res.status(400).json({
+          error:
+            "tokenId and userAddress are required",
+        });
       }
 
       const mockEvent = {
@@ -300,18 +357,15 @@ app.post(
         "Error creating test job:",
         error
       );
-      res
-        .status(500)
-        .json({
-          error:
-            "Internal server error",
-        });
+      res.status(500).json({
+        error: "Internal server error",
+      });
     }
   }
 );
 
 /**
- * Get past mint events (for catching up)
+ * Get past NFTMinted events (for catching up)
  */
 app.get(
   "/events/past",
@@ -335,12 +389,9 @@ app.get(
         "Error getting past events:",
         error
       );
-      res
-        .status(500)
-        .json({
-          error:
-            "Internal server error",
-        });
+      res.status(500).json({
+        error: "Internal server error",
+      });
     }
   }
 );
@@ -379,7 +430,7 @@ async function startServer() {
     }
 
     // Start contract listener
-    startContractListener();
+    await startContractListener();
 
     // Start Express server
     app.listen(PORT, () => {

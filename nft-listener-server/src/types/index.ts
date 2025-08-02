@@ -36,6 +36,20 @@ export interface ContractEvent {
   from: string;
   transactionHash: string;
   blockNumber: number;
+  rarity?: number;
+}
+
+export interface NFTStatistics {
+  totalMinted: number;
+  rarityDistribution: {
+    [rarity: number]: {
+      name: string;
+      count: number;
+      percentage: number;
+    };
+  };
+  recentMints: ContractEvent[];
+  lastUpdated: number;
 }
 
 export interface PinataUploadResponse {

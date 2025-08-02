@@ -5,7 +5,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { useState } from "react";
-import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
+import { StakableNFTAbi } from "@/shared/lib/abis";
 import { HeroSection } from "./_sections/HeroSection";
 import { HowBuySection } from "./_sections/HowBuySection";
 import { MintSection } from "./_sections/MintSection";

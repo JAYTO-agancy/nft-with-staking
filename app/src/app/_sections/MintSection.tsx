@@ -1,5 +1,4 @@
 "use client";
-import { Button } from "@/shared/ui/kit/button";
 import {
   Sparkles,
   ExternalLink,
