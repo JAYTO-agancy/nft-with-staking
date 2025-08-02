@@ -34,12 +34,15 @@ const layerConfigurations = [
   {
     growEditionSizeTo: 10000,
     layersOrder: [
-      { name: "Background" },
-      { name: "Background Objects" },
-      { name: "Frog" },
-      { name: "Cloth" },
-      { name: "Neck" },
-      { name: "Hats" },
+      { name: "Monsters" },
+      { name: "BodyTattoo" },
+      { name: "FaceTattoo" },
+      { name: "Brows" },
+      { name: "Eyes" },
+      { name: "Mouths" },
+      { name: "Earrings" },
+      { name: "FingerRingLeft" },
+      { name: "Top" },
     ],
   },
 ];
