@@ -1,120 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateNFTWithRarity } from "@/shared/lib/nft/generator";
 
-const RARITY_NAMES = {
-  1: "Common",
-  2: "Uncommon",
-  3: "Rare",
-  4: "Epic",
-  5: "Legendary",
-} as const;
-
-// Функция для получения следующего доступного ID
-async function getNextNftId(): Promise<number> {
-  // const lastNft = await prisma.generatedNft.findFirst({
-  //   orderBy: { edition: "desc" },
-  // });
-
-  // return (lastNft?.edition || 0) + 1;
-  return Math.floor(Math.random() * 10000);
-}
+const NFT_LISTENER_SERVER_URL =
+  process.env.NFT_LISTENER_SERVER_URL || "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
   try {
-    // Получаем статистику
-    // const stats = await getRarityStats();
+    const { tokenId, userAddress } = await request.json();
 
-    // const totalGenerated = stats.reduce((sum, r) => sum + r.generated, 0);
-    // const totalLimit = stats.reduce((sum, r) => sum + r.limit, 0);
-
-    // if (totalGenerated >= totalLimit) {
-    //   return NextResponse.json(
-    //     { error: "All NFTs have been generated" },
-    //     { status: 400 },
-    //   );
-    // }
-
-    // Выбираем редкость на основе текущих шансов
-    // const selectedRarityLevel = await selectRarityByChance();
-
-    // Проверяем, можно ли сгенерировать NFT этой редкости
-    const canGenerate = true;
-    // const canGenerate = await canGenerateRarity(selectedRarityLevel);
-
-    // if (!canGenerate) {
-    //   // Если нет, обновляем шансы и пробуем снова
-    //   await updateRarityChances();
-    //   return NextResponse.json(
-    //     { error: "Selected rarity limit reached, please try again" },
-    //     { status: 400 },
-    //   );
-    // }
-
-    // const rarityName = RARITY_NAMES[selectedRarityLevel];
-
-    // Если нужно проверить конкретную редкость
-    const rarityName = RARITY_NAMES[5];
-
-    // Получаем следующий ID для NFT
-    const nextId = await getNextNftId();
-
-    // Генерируем NFT
-    console.log(`Generating ${rarityName} NFT with ID ${nextId}...`);
-    const result = await generateNFTWithRarity(rarityName, nextId);
-
-    if (!result.success) {
+    if (!tokenId || !userAddress) {
       return NextResponse.json(
-        { error: result.error || "Generation failed" },
-        { status: 500 },
+        { error: "tokenId and userAddress are required" },
+        { status: 400 },
       );
     }
 
-    // Сохраняем в базу данных
-    // const nft = await prisma.generatedNft.create({
-    //   data: {
-    //     edition: result.edition!,
-    //     name: result.metadata.name,
-    //     rarityLevel: selectedRarityLevel,
-    //     rarityName: rarityName,
-    //     dna: result.metadata.dna,
-    //     imageUrl: result.imageUrl!,
-    //     jsonUrl: result.jsonUrl!, // Добавляем URL к JSON
-    //     metadata: result.metadata,
-    //   },
-    // });
+    // Check if generation job already exists for this token
+    try {
+      const existingJobResponse = await fetch(
+        `${NFT_LISTENER_SERVER_URL}/token/${tokenId}`,
+      );
 
-    // Увеличиваем счетчик редкости
-    // await incrementRarityCount(selectedRarityLevel);
+      if (existingJobResponse.ok) {
+        const { job } = await existingJobResponse.json();
+        return NextResponse.json({
+          success: true,
+          jobId: job.id,
+          status: job.status,
+          tokenId: job.tokenId,
+          message: "Generation job already exists",
+        });
+      }
+    } catch (error) {
+      // Job doesn't exist, which is fine - we'll create a new one
+      console.log("No existing job found, creating new one");
+    }
 
-    // Обновляем шансы если необходимо
-    // await updateRarityChances();
+    // Create a new generation job (for testing purposes)
+    const response = await fetch(`${NFT_LISTENER_SERVER_URL}/test/create-job`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tokenId,
+        userAddress,
+      }),
+    });
 
-    // Получаем обновленную статистику
-    // const updatedStats = await getRarityStats();
+    if (!response.ok) {
+      throw new Error(
+        `Failed to create generation job: ${response.statusText}`,
+      );
+    }
+
+    const { job } = await response.json();
 
     return NextResponse.json({
       success: true,
-      // nft: {
-      //   id: nft.id,
-      //   edition: nft.edition,
-      //   name: nft.name,
-      //   rarity: nft.rarityName,
-      //   imageUrl: nft.imageUrl,
-      //   jsonUrl: nft.jsonUrl,
-      //   metadata: nft.metadata,
-      // },
-      // stats: updatedStats.map((r) => ({
-      //   rarity: r.rarityName,
-      //   generated: r.generated,
-      //   limit: r.limit,
-      //   remaining: r.remaining,
-      //   currentChance: r.currentChance.toFixed(2) + "%",
-      // })),
+      jobId: job.id,
+      status: job.status,
+      tokenId: job.tokenId,
+      message: "Generation job created successfully",
     });
   } catch (error) {
-    console.error("Generation error:", error);
+    console.error("Error creating generation job:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to create generation job" },
       { status: 500 },
     );
   }
