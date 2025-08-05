@@ -13,8 +13,7 @@ import {
   Variants,
 } from "framer-motion";
 import { useRef } from "react";
-
-const CONTRACT_ADDRESS = "0x43ccC21884F39E40edef71980C93aD87FDe99763";
+import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
 
 const rarityConfig: Record<
   string,
@@ -150,7 +149,7 @@ export function LastMintedSection() {
       setLoading(true);
       try {
         const totalSupply = await publicClient?.readContract({
-          address: CONTRACT_ADDRESS,
+          address: CONTRACTS_ADDRESS.StakableNFT,
           abi: StakableNFTAbi,
           functionName: "totalSupply",
         });
@@ -161,7 +160,7 @@ export function LastMintedSection() {
         const nftData = await Promise.all(
           lastIds.map(async (id) => {
             const tokenURI = await publicClient?.readContract({
-              address: CONTRACT_ADDRESS,
+              address: CONTRACTS_ADDRESS.StakableNFT,
               abi: StakableNFTAbi,
               functionName: "tokenURI",
               args: [BigInt(id)],
