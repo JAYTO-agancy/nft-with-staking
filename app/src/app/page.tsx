@@ -12,8 +12,7 @@ import { MintSection } from "./_sections/MintSection";
 import { LastMintedSection } from "./_sections/LastMintedSection";
 import { StatsSection } from "./_sections/StatsSection";
 import { ProjectStorySection } from "./_sections/ProjectStorySection";
-
-const CONTRACT_ADDRESS = "0x43ccC21884F39E40edef71980C93aD87FDe99763";
+import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
 
 function randomBytes32() {
   const bytes = new Uint8Array(32);
@@ -44,7 +43,7 @@ export default function Home() {
     try {
       const secret = randomBytes32();
       await writeContract({
-        address: CONTRACT_ADDRESS,
+        address: CONTRACTS_ADDRESS.StakableNFT,
         abi: StakableNFTAbi,
         functionName: "mint",
         args: [1n, secret as `0x${string}`],
