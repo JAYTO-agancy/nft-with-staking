@@ -3,11 +3,21 @@ import { Button } from "@/shared/ui/kit/button";
 import Image from "next/image";
 import { Sparkles, Heart, Play, ArrowRight, Zap } from "lucide-react";
 import { motion, useInView, Variants } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export function HeroSection({ onMint }: { onMint?: () => void }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
+  const [activeCard, setActiveCard] = useState(0);
+
+  // Auto rotation for mobile
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveCard((prev) => (prev + 1) % 3);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -43,7 +53,7 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
   return (
     <motion.section
       ref={ref}
-      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-black to-purple-900"
+      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-black to-purple-900 pb-24"
     >
       {/* Soft background gradient */}
       <div className="absolute inset-0 opacity-20">
@@ -64,10 +74,94 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
           variants={containerVariants}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
-          className="flex min-h-screen flex-col items-center justify-center gap-16 lg:flex-row lg:gap-24"
+          className="flex min-h-screen flex-col items-center justify-start gap-8 pt-8 lg:flex-row lg:justify-center lg:gap-24 lg:pt-0"
         >
+          {/* Image Fan with 3D Effects (3:4 aspect, stacked like cards) - Mobile First */}
+          <div className="flex justify-center lg:order-2 lg:flex-1 lg:justify-end">
+            <motion.div
+              variants={itemVariants}
+              className="relative h-[280px] w-[200px] lg:h-[520px] lg:w-[360px]"
+            >
+              <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 blur-3xl" />
+
+              {/* Back card */}
+              <motion.div
+                variants={floatingVariants}
+                animate="animate"
+                className="absolute top-6 left-0 rotate-[-10deg] lg:top-8 lg:left-0"
+                style={{
+                  zIndex: activeCard === 0 ? 50 : 10,
+                }}
+                whileHover={{ scale: 1.02, zIndex: 50 }}
+              >
+                <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl lg:p-3">
+                  <div className="relative h-[240px] w-[180px] overflow-hidden rounded-2xl lg:h-[480px] lg:w-[360px]">
+                    <Image
+                      src="/img/hero_example.png"
+                      alt="Plumffel NFT Back"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 180px, 360px"
+                      priority
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Middle card */}
+              <motion.div
+                variants={floatingVariants}
+                animate="animate"
+                className="absolute top-0 left-5 rotate-[-3deg] lg:top-0 lg:left-6"
+                style={{
+                  zIndex: activeCard === 1 ? 50 : 20,
+                }}
+                transition={{ delay: 0.1 }}
+                whileHover={{ scale: 1.02, zIndex: 50 }}
+              >
+                <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl lg:p-3">
+                  <div className="relative h-[240px] w-[180px] overflow-hidden rounded-2xl lg:h-[480px] lg:w-[360px]">
+                    <Image
+                      src="/img/hero_example.png"
+                      alt="Plumffel NFT Middle"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 180px, 360px"
+                      priority
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Front card */}
+              <motion.div
+                variants={floatingVariants}
+                animate="animate"
+                className="absolute top-0 left-10 rotate-[4deg] lg:top-6 lg:left-12"
+                style={{
+                  zIndex: activeCard === 2 ? 50 : 30,
+                }}
+                transition={{ delay: 0.2 }}
+                whileHover={{ scale: 1.02, zIndex: 50 }}
+              >
+                <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl lg:p-3">
+                  <div className="relative h-[240px] w-[180px] overflow-hidden rounded-2xl lg:h-[480px] lg:w-[360px]">
+                    <Image
+                      src="/img/hero_example.png"
+                      alt="Plumffel NFT Front"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 180px, 360px"
+                      priority
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+
           {/* Text Content */}
-          <div className="flex flex-1 flex-col items-center gap-8 text-center lg:items-start lg:text-left">
+          <div className="flex flex-1 flex-col items-center gap-8 text-center lg:order-1 lg:items-start lg:text-left">
             <motion.div variants={itemVariants} className="group relative">
               <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-3 backdrop-blur-xl">
                 <Sparkles className="h-5 w-5 text-purple-400" />
@@ -110,32 +204,25 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
               className="flex flex-col gap-6 sm:flex-row sm:gap-8"
             >
               {onMint && (
-                <div className="group relative">
-                  <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 opacity-70 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200" />
-                  <Button
-                    onClick={onMint}
-                    size="lg"
-                    className="relative flex items-center gap-3 rounded-full bg-black px-8 py-4 text-lg font-semibold text-white"
-                  >
-                    <Zap className="h-6 w-6" />
-                    <span>Mint Now</span>
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </div>
+                <Button
+                  onClick={onMint}
+                  size="lg"
+                  variant="glass"
+                  className="group relative flex items-center gap-3"
+                >
+                  <div className="rounded-full bg-white/10 p-2">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span>Mint Now</span>
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
               )}
-
-              <button className="group flex items-center gap-3 rounded-full border border-white/20 bg-white/5 px-8 py-4 text-lg font-semibold text-white backdrop-blur-xl hover:bg-white/10">
-                <div className="rounded-full bg-white/10 p-2">
-                  <Play className="h-5 w-5" />
-                </div>
-                <span>Watch Demo</span>
-              </button>
             </motion.div>
 
             {/* Animated Stats */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-wrap justify-center gap-8 lg:justify-start"
+              className="flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-6 lg:justify-start"
             >
               {[
                 { value: "10K", label: "Supply", delay: 0 },
@@ -152,34 +239,6 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
                   </div>
                 </div>
               ))}
-            </motion.div>
-          </div>
-
-          {/* Image with 3D Effects */}
-          <div className="flex flex-1 justify-center lg:justify-end">
-            <motion.div variants={itemVariants} className="group relative">
-              {/* Main NFT container */}
-              <motion.div
-                variants={floatingVariants}
-                animate="animate"
-                className="relative"
-              >
-                <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 blur-3xl" />
-
-                <motion.div
-                  className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-4 backdrop-blur-2xl"
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <Image
-                    src="/img/hero_example.png"
-                    alt="Plumffel NFT"
-                    width={400}
-                    height={400}
-                    className="h-80 w-80 rounded-2xl object-cover sm:h-96 sm:w-96 lg:h-[500px] lg:w-[500px]"
-                    priority
-                  />
-                </motion.div>
-              </motion.div>
             </motion.div>
           </div>
         </motion.div>
