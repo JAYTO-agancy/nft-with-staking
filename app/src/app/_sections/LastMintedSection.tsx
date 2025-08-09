@@ -129,6 +129,7 @@ export function LastMintedSection() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const publicClient = usePublicClient();
   const wsClient = useRef<ReturnType<typeof createPublicClient> | null>(null);
 
@@ -155,6 +156,16 @@ export function LastMintedSection() {
 
   useEffect(() => {
     setIsMounted(true);
+
+    // Check if mobile on mount and resize
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -180,7 +191,7 @@ export function LastMintedSection() {
           functionName: "totalSupply",
         });
         const lastIds = Array.from(
-          { length: 5 },
+          { length: 6 },
           (_, i) => Number(totalSupply) - i,
         ).filter((id) => id > 0);
 
@@ -278,7 +289,7 @@ export function LastMintedSection() {
                     const p = [...prev2];
                     if (!p.find((x) => x.id === tokenId)) {
                       p.unshift({ id: tokenId, imageUrl, rarity });
-                      if (p.length > 5) p.pop();
+                      if (p.length > 6) p.pop();
                     }
                     return p;
                   });
@@ -455,7 +466,7 @@ export function LastMintedSection() {
           {/* NFTs Grid */}
           {loading ? (
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: isMobile ? 6 : 5 }).map((_, i) => (
                 <NFTSkeleton key={i} index={i} />
               ))}
             </div>
@@ -484,7 +495,7 @@ export function LastMintedSection() {
             </motion.div>
           ) : (
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-              {nfts.map((nft, index) => (
+              {nfts.slice(0, isMobile ? 6 : 5).map((nft, index) => (
                 <motion.div key={nft.id} variants={nftVariants}>
                   <NFTCard
                     tokenId={nft.id}
