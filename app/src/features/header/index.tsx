@@ -23,8 +23,18 @@ const navigationItems = [
     href: "/marketplace",
     label: "Marketplace",
     icon: ShoppingBag,
+    disabled: true,
+    comingSoon: true,
   },
 ];
+
+type NavigationItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+  comingSoon?: boolean;
+};
 
 export const Header: React.FC<{ className?: string }> = ({ className }) => {
   const pathname = usePathname();
@@ -44,6 +54,23 @@ export const Header: React.FC<{ className?: string }> = ({ className }) => {
           {navigationItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
+
+            if (item.disabled) {
+              return (
+                <div
+                  key={item.href}
+                  className="relative flex cursor-not-allowed items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-500"
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                  {item.comingSoon && (
+                    <span className="absolute -top-1 -right-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 text-xs text-white">
+                      Soon
+                    </span>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <Link

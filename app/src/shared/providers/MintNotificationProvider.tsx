@@ -8,8 +8,12 @@ import {
   ReactNode,
   useMemo,
 } from "react";
-import { useAccount, usePublicClient } from "wagmi";
-import { createPublicClient, webSocket } from "viem";
+import {
+  useAccount,
+  usePublicClient,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { createPublicClient, webSocket, decodeEventLog } from "viem";
 import { sepolia } from "viem/chains";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
@@ -29,7 +33,7 @@ type MintedNFT = {
 };
 
 type MintNotificationContextType = {
-  showMintNotification: (txHash: string) => void;
+  showMintNotification: (txHash: `0x${string}`) => void;
   hideMintNotification: () => void;
 };
 
@@ -54,7 +58,14 @@ export function MintNotificationProvider({ children }: Props) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const [mintedNft, setMintedNft] = useState<MintedNFT | null>(null);
-  const [watchingTxHash, setWatchingTxHash] = useState<string | null>(null);
+  const [watchingTxHash, setWatchingTxHash] = useState<`0x${string}` | null>(
+    null,
+  );
+
+  // Wait for transaction receipt
+  const { data: receipt, isSuccess: txSuccess } = useWaitForTransactionReceipt({
+    hash: watchingTxHash || undefined,
+  });
 
   const wsClient = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_WS_RPC_URL;
@@ -73,9 +84,19 @@ export function MintNotificationProvider({ children }: Props) {
   const checkImageAvailability = async (tokenId: number): Promise<boolean> => {
     try {
       const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+      console.log(
+        "🎯 MintNotification: Checking S3 availability for:",
+        imageUrl,
+      );
       const response = await fetch(imageUrl, { method: "HEAD" });
+      console.log(
+        "🎯 MintNotification: S3 response status:",
+        response.status,
+        response.ok,
+      );
       return response.ok;
-    } catch {
+    } catch (error) {
+      console.log("🎯 MintNotification: S3 check error:", error);
       return false;
     }
   };
@@ -99,28 +120,72 @@ export function MintNotificationProvider({ children }: Props) {
 
   // Listen for NFTMinted events for current user
   useEffect(() => {
-    if (!address || !watchingTxHash) return;
+    if (!address || !watchingTxHash) {
+      console.log(
+        "🎯 MintNotification: Not watching - address:",
+        address,
+        "txHash:",
+        watchingTxHash,
+      );
+      return;
+    }
 
     const abi = StakableNFTAbi as any;
     const client = (wsClient ?? publicClient) as any;
-    if (!client) return;
+    if (!client) {
+      console.log("🎯 MintNotification: No client available");
+      return;
+    }
+
+    console.log(
+      "🎯 MintNotification: Setting up event listener for address:",
+      address,
+      "txHash:",
+      watchingTxHash,
+    );
 
     const unwatch = client.watchContractEvent?.({
       address: CONTRACTS_ADDRESS.StakableNFT,
       abi,
       eventName: "NFTMinted",
+      fromBlock: "latest", // Start from latest block to catch new events
       onLogs: async (logs: any[]) => {
+        console.log(
+          "🎯 MintNotification: Received",
+          logs.length,
+          "NFTMinted events",
+        );
+
         for (const log of logs) {
           const to = log.args?.to as `0x${string}` | undefined;
           const tokenId = Number(log.args?.tokenId ?? 0);
           const rarityIdx = Number(log.args?.rarity ?? 0);
-          const logTxHash = log.transactionHash as string;
+          const logTxHash = log.transactionHash as `0x${string}`;
+
+          console.log(
+            "🎯 MintNotification: Event - to:",
+            to,
+            "tokenId:",
+            tokenId,
+            "txHash:",
+            logTxHash,
+          );
+          console.log(
+            "🎯 MintNotification: Comparing - userAddress:",
+            address,
+            "watchingTxHash:",
+            watchingTxHash,
+          );
 
           // Filter to current user's mint and matching txHash
           if (
             to?.toLowerCase() === address.toLowerCase() &&
-            logTxHash === watchingTxHash
+            logTxHash?.toLowerCase() === watchingTxHash?.toLowerCase()
           ) {
+            console.log(
+              "🎯 MintNotification: Match found! Processing tokenId:",
+              tokenId,
+            );
             const RARITY_NAMES = [
               "Common",
               "Uncommon",
@@ -131,10 +196,18 @@ export function MintNotificationProvider({ children }: Props) {
             const rarity = RARITY_NAMES[rarityIdx] ?? "Unknown";
 
             // Wait for S3 image to be available
+            console.log(
+              "🎯 MintNotification: Waiting for S3 image for tokenId:",
+              tokenId,
+            );
             const imageAvailable = await waitForS3Image(tokenId);
 
             if (imageAvailable) {
               const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+              console.log(
+                "🎯 MintNotification: S3 image available, showing modal for tokenId:",
+                tokenId,
+              );
               setMintedNft({
                 tokenId,
                 imageUrl,
@@ -142,6 +215,11 @@ export function MintNotificationProvider({ children }: Props) {
                 txHash: logTxHash,
               });
               setWatchingTxHash(null); // Stop watching after successful detection
+            } else {
+              console.log(
+                "🎯 MintNotification: S3 image not available after waiting for tokenId:",
+                tokenId,
+              );
             }
           }
         }
@@ -156,7 +234,123 @@ export function MintNotificationProvider({ children }: Props) {
     };
   }, [address, watchingTxHash, wsClient, publicClient]);
 
-  const showMintNotification = (txHash: string) => {
+  // Alternative approach: Parse transaction receipt logs when transaction is confirmed
+  useEffect(() => {
+    if (!txSuccess || !receipt || !address || !watchingTxHash) return;
+
+    console.log(
+      "🎯 MintNotification: Transaction confirmed, parsing logs...",
+      receipt,
+    );
+
+    // Parse transaction logs to find NFTMinted event
+    const nftMintedLogs = receipt.logs.filter((log: any) => {
+      // Check if this log is from our NFT contract and has the right topic (NFTMinted event)
+      return (
+        log.address?.toLowerCase() ===
+        CONTRACTS_ADDRESS.StakableNFT.toLowerCase()
+      );
+    });
+
+    console.log(
+      "🎯 MintNotification: Found",
+      nftMintedLogs.length,
+      "logs from NFT contract",
+    );
+
+    for (const log of nftMintedLogs) {
+      try {
+        // Decode the log using decodeEventLog
+        const decodedLog = (() => {
+          try {
+            return decodeEventLog({
+              abi: StakableNFTAbi as any,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })();
+
+        console.log("🎯 MintNotification: Decoded log:", decodedLog);
+
+        if (
+          decodedLog &&
+          typeof decodedLog === "object" &&
+          "eventName" in decodedLog &&
+          decodedLog.eventName === "NFTMinted" &&
+          "args" in decodedLog &&
+          decodedLog.args
+        ) {
+          const args = decodedLog.args as any;
+          const to = args.to as `0x${string}`;
+          const tokenId = Number(args.tokenId ?? 0);
+          const rarityIdx = Number(args.rarity ?? 0);
+
+          console.log(
+            "🎯 MintNotification: NFTMinted event found - to:",
+            to,
+            "tokenId:",
+            tokenId,
+          );
+
+          if (to?.toLowerCase() === address.toLowerCase()) {
+            console.log(
+              "🎯 MintNotification: Match found! Processing tokenId from receipt:",
+              tokenId,
+            );
+
+            const RARITY_NAMES = [
+              "Common",
+              "Uncommon",
+              "Rare",
+              "Epic",
+              "Legendary",
+            ];
+            const rarity = RARITY_NAMES[rarityIdx] ?? "Unknown";
+
+            // Process the mint notification
+            const processMint = async () => {
+              console.log(
+                "🎯 MintNotification: Waiting for S3 image for tokenId (from receipt):",
+                tokenId,
+              );
+              const imageAvailable = await waitForS3Image(tokenId);
+
+              if (imageAvailable) {
+                const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+                console.log(
+                  "🎯 MintNotification: S3 image available, showing modal for tokenId (from receipt):",
+                  tokenId,
+                );
+                setMintedNft({
+                  tokenId,
+                  imageUrl,
+                  rarity,
+                  txHash: watchingTxHash,
+                });
+                setWatchingTxHash(null);
+              } else {
+                console.log(
+                  "🎯 MintNotification: S3 image not available after waiting for tokenId (from receipt):",
+                  tokenId,
+                );
+              }
+            };
+
+            processMint();
+            break; // Only process the first matching event
+          }
+        }
+      } catch (error) {
+        console.log("🎯 MintNotification: Error decoding log:", error);
+      }
+    }
+  }, [txSuccess, receipt, address, watchingTxHash, publicClient]);
+
+  const showMintNotification = (txHash: `0x${string}`) => {
+    console.log("🎯 MintNotification: Starting to watch txHash:", txHash);
     setWatchingTxHash(txHash);
   };
 
