@@ -2,8 +2,10 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
+import { createPublicClient, webSocket } from "viem";
+import { sepolia } from "viem/chains";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
-import { Sparkles, Clock, ExternalLink, Star, Eye } from "lucide-react";
+import { Sparkles, Clock, ExternalLink } from "lucide-react";
 import {
   motion,
   useInView,
@@ -14,6 +16,7 @@ import {
 } from "framer-motion";
 import { useRef } from "react";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
+import { NFTCard } from "@/shared/components/NFTCard";
 
 const rarityConfig: Record<
   string,
@@ -120,9 +123,9 @@ export function LastMintedSection() {
     Array<{ id: number; imageUrl: string; rarity: string }>
   >([]);
   const [loading, setLoading] = useState(false);
-  const [hoveredNft, setHoveredNft] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const publicClient = usePublicClient();
+  const wsClient = useRef<ReturnType<typeof createPublicClient> | null>(null);
 
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
@@ -150,6 +153,19 @@ export function LastMintedSection() {
   }, []);
 
   useEffect(() => {
+    // Init WS client if possible
+    if (!wsClient.current) {
+      const url = process.env.NEXT_PUBLIC_WS_RPC_URL;
+      if (url) {
+        try {
+          wsClient.current = createPublicClient({
+            chain: sepolia,
+            transport: webSocket(url, { retryCount: 0 }),
+          });
+        } catch {}
+      }
+    }
+
     async function fetchLastMinted() {
       setLoading(true);
       try {
@@ -218,6 +234,48 @@ export function LastMintedSection() {
     }
     fetchLastMinted();
   }, [publicClient]);
+
+  // Live updates via WS: push newly minted NFTs to the list
+  useEffect(() => {
+    const client = wsClient.current;
+    if (!client) return;
+
+    const unwatch = client.watchContractEvent?.({
+      address: CONTRACTS_ADDRESS.StakableNFT,
+      abi: StakableNFTAbi as any,
+      eventName: "NFTMinted",
+      onLogs: (logs: any[]) => {
+        setNfts((prev) => {
+          const next = [...prev];
+          for (const log of logs) {
+            const tokenId = Number(log.args?.tokenId ?? 0);
+            const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+            const rarityIdx = Number(log.args?.rarity ?? 0);
+            const RARITY_NAMES = [
+              "Common",
+              "Uncommon",
+              "Rare",
+              "Epic",
+              "Legendary",
+            ];
+            const rarity = RARITY_NAMES[rarityIdx] ?? "";
+            // Prepend unique token
+            if (!next.find((x) => x.id === tokenId)) {
+              next.unshift({ id: tokenId, imageUrl, rarity });
+              if (next.length > 5) next.pop();
+            }
+          }
+          return next;
+        });
+      },
+      onError: () => {},
+    });
+    return () => {
+      try {
+        unwatch?.();
+      } catch {}
+    };
+  }, []);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -405,208 +463,16 @@ export function LastMintedSection() {
             </motion.div>
           ) : (
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:gap-8 lg:grid-cols-5">
-              {nfts.map((nft, index) => {
-                const config = rarityConfig[nft.rarity] || rarityConfig.Common;
-                const isHovered = hoveredNft === nft.id;
-
-                return (
-                  <motion.div
-                    key={nft.id}
-                    variants={nftVariants}
-                    className="group relative"
-                    onHoverStart={() => setHoveredNft(nft.id)}
-                    onHoverEnd={() => setHoveredNft(null)}
-                    style={{ perspective: "1000px" }}
-                  >
-                    {/* Holographic glow */}
-                    <motion.div
-                      className={`absolute -inset-4 rounded-3xl bg-gradient-to-r ${config.hologram} opacity-0 blur-xl transition-opacity duration-500`}
-                      animate={
-                        isHovered
-                          ? {
-                              opacity: [0, 0.6, 0],
-                              scale: [1, 1.1, 1],
-                            }
-                          : {}
-                      }
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-
-                    {/* Main NFT Card */}
-                    <motion.div
-                      className={`relative overflow-hidden rounded-3xl border-2 p-4 backdrop-blur-xl ${config.color} bg-gradient-to-br ${config.bgColor} `}
-                      whileHover={{
-                        y: -20,
-                        rotateX: 10,
-                        rotateY: isHovered ? (index % 2 === 0 ? -10 : 10) : 0,
-                        scale: 1.05,
-                      }}
-                      transition={{
-                        type: "spring" as const,
-                        stiffness: 400,
-                        damping: 25,
-                      }}
-                    >
-                      {/* Rarity badge */}
-                      <motion.div
-                        className={`absolute top-3 right-3 z-20 flex items-center gap-1 rounded-full bg-gradient-to-r px-3 py-1 text-xs font-bold text-white shadow-2xl ${config.badge} `}
-                        whileHover={{ scale: 1.1 }}
-                      >
-                        <Star className="h-3 w-3" />
-                        <span>{nft.rarity}</span>
-                      </motion.div>
-
-                      {/* Recently minted badge */}
-                      {index === 0 && (
-                        <motion.div
-                          className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xl"
-                          animate={{
-                            scale: [1, 1.1, 1],
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <motion.div
-                            className="h-2 w-2 rounded-full bg-white"
-                            animate={{ opacity: [0.5, 1, 0.5] }}
-                            transition={{ duration: 1, repeat: Infinity }}
-                          />
-                          <span>NEW</span>
-                        </motion.div>
-                      )}
-
-                      {/* NFT Image */}
-                      <div className="relative aspect-square overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800/50 to-gray-900/50">
-                        {nft.imageUrl ? (
-                          <Image
-                            src={nft.imageUrl}
-                            alt={`Plumffel #${nft.id}`}
-                            fill
-                            className="object-cover transition-transform duration-700 group-hover:scale-110"
-                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{
-                                duration: 4,
-                                repeat: Infinity,
-                                ease: "linear" as const,
-                              }}
-                            >
-                              <Sparkles className="h-8 w-8 text-gray-500" />
-                            </motion.div>
-                          </div>
-                        )}
-
-                        {/* Overlay gradient */}
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity duration-300"
-                          animate={isHovered ? { opacity: 1 } : { opacity: 0 }}
-                        />
-
-                        {/* Action buttons overlay */}
-                        <motion.div
-                          className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 transition-opacity duration-300"
-                          animate={isHovered ? { opacity: 1 } : { opacity: 0 }}
-                        >
-                          <motion.button
-                            className="flex items-center gap-1 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-gray-800 shadow-xl backdrop-blur-sm"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Eye className="h-3 w-3" />
-                            View
-                          </motion.button>
-
-                          <motion.button
-                            className="flex items-center gap-1 rounded-full bg-purple-600/90 px-3 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-sm"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            Details
-                          </motion.button>
-                        </motion.div>
-
-                        {/* Particle effects */}
-                        {isHovered &&
-                          Array.from({ length: 6 }).map((_, i) => (
-                            <motion.div
-                              key={i}
-                              className={`absolute h-1 w-1 rounded-full bg-gradient-to-r ${config.particles}`}
-                              style={{
-                                left: `${20 + Math.random() * 60}%`,
-                                top: `${20 + Math.random() * 60}%`,
-                              }}
-                              animate={{
-                                scale: [0, 1, 0],
-                                opacity: [0, 1, 0],
-                                y: [0, -30],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                delay: i * 0.2,
-                              }}
-                            />
-                          ))}
-                      </div>
-
-                      {/* NFT Info */}
-                      <div className="mt-4 space-y-1 text-center">
-                        <motion.div
-                          className="text-sm font-bold text-white"
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          Plumffel #{nft.id}
-                        </motion.div>
-                        <motion.div
-                          className="text-xs text-gray-400"
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          {nft.rarity} Edition
-                        </motion.div>
-                      </div>
-
-                      {/* Holographic shine effect */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                        animate={
-                          isHovered
-                            ? {
-                                x: ["-100%", "100%"],
-                                opacity: [0, 1, 0],
-                              }
-                            : {}
-                        }
-                        transition={{
-                          duration: 1.5,
-                          ease: "easeInOut" as const,
-                        }}
-                      />
-
-                      {/* Border glow animation */}
-                      <motion.div
-                        className={`absolute inset-0 rounded-3xl bg-gradient-to-r ${config.particles} opacity-0`}
-                        animate={
-                          isHovered
-                            ? {
-                                opacity: [0, 0.3, 0],
-                              }
-                            : {}
-                        }
-                        transition={{ duration: 2, repeat: Infinity }}
-                        style={{
-                          mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                          maskComposite: "xor",
-                          padding: "2px",
-                        }}
-                      />
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
+              {nfts.map((nft, index) => (
+                <motion.div key={nft.id} variants={nftVariants}>
+                  <NFTCard
+                    tokenId={nft.id}
+                    imageUrl={nft.imageUrl}
+                    rarity={nft.rarity}
+                    showNewBadge={index === 0}
+                  />
+                </motion.div>
+              ))}
             </div>
           )}
 
