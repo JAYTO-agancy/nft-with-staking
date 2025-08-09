@@ -3,7 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { ContractListenerService } from "./services/contractListener";
 import { JobManagerService } from "./services/jobManager";
-import { PinataService } from "./services/pinata";
 import { GenerationJob } from "./types";
 
 // Load environment variables
@@ -19,7 +18,7 @@ app.use(express.json());
 // Services
 let contractListener: ContractListenerService;
 let jobManager: JobManagerService;
-let pinataService: PinataService;
+// Removed PinataService; now using S3 via JobManager
 
 // Initialize services
 async function initializeServices() {
@@ -33,7 +32,6 @@ async function initializeServices() {
       new ContractListenerService();
     jobManager =
       new JobManagerService();
-    pinataService = new PinataService();
 
     // Test connections
     console.log(
@@ -49,13 +47,7 @@ async function initializeServices() {
       // Don't throw error, just warn - server can still work for manual job creation
     }
 
-    const pinataConnected =
-      await pinataService.testAuthentication();
-    if (!pinataConnected) {
-      throw new Error(
-        "Failed to authenticate with Pinata"
-      );
-    }
+    // S3 connectivity is validated lazily when uploading
 
     console.log(
       "✅ All services initialized successfully"

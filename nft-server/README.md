@@ -9,7 +9,7 @@
 - **Общие ABIs**: Переиспользуемые ABIs для фронтенда и бэкенда
 - **Статистика контракта**: Подсчет totalSupply и minted NFT
 - **Генерация NFT**: Создает уникальные NFT с разными уровнями редкости
-- **Загрузка в Pinata**: Автоматически загружает изображения и метаданные в IPFS
+- **Загрузка в S3**: Автоматически загружает изображения и метаданные в S3-совместимое хранилище
 - **RESTful API**: Предоставляет API для проверки статуса генерации
 - **In-memory job management**: Хранит статус задач в памяти для быстрого доступа
 - **Упрощенный режим**: Работает с ограничениями бесплатных RPC провайдеров
@@ -18,7 +18,7 @@
 ## 📋 Архитектура
 
 ```
-Пользователь -> Mint контракт -> Event Listener -> Генерация NFT -> Pinata -> Готовый NFT
+Пользователь -> Mint контракт -> Event Listener -> Генерация NFT -> S3 -> Готовый NFT
                                        ↓
                                Job Manager (статус)
                                        ↓
@@ -46,10 +46,17 @@ cp env.example .env
 RPC_URL=https://your-rpc-endpoint
 CONTRACT_ADDRESS=0x1234567890abcdef1234567890abcdef12345678
 
-# Pinata Configuration
-PINATA_API_KEY=your-pinata-api-key
-PINATA_SECRET_KEY=your-pinata-secret-key
-PINATA_JWT=your-pinata-jwt
+# S3 Configuration
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+S3_BUCKET=your-bucket
+
+# Optional (для MinIO/совместимых сервисов)
+# S3_ENDPOINT=https://s3.your-provider.com
+# S3_FORCE_PATH_STYLE=true
+# S3_PUBLIC_BASE_URL=https://cdn.your-domain.com
+# S3_PREFIX=nft
 
 # Server Configuration
 PORT=3001
@@ -132,9 +139,9 @@ const { imagePath, metadata } = await nftGenerator.generateNFT(
   tokenId
 );
 
-// Загружаем в Pinata
-const imageUrl = await pinata.uploadImage(imagePath, tokenId);
-const metadataUrl = await pinata.uploadMetadata(metadata, tokenId);
+// Загружаем в S3
+const imageUrl = await s3Service.uploadImage(imagePath, tokenId);
+const metadataUrl = await s3Service.uploadMetadata(metadata, tokenId);
 ```
 
 ### 3. Отслеживание на фронтенде
@@ -151,16 +158,11 @@ const { status, isCompleted } = useNFTGeneration(tokenId, {
 <NFTGenerationStatus tokenId={tokenId} userAddress={address} />
 ```
 
-## 🔧 Конфигурация Pinata
+## 🔧 Публичные URL для S3
 
-### Создание публичной группы
-```typescript
-const groupId = await pinataService.createPublicGroup("My NFT Collection");
-```
-
-Это позволит получать доступ к NFT по прямым ссылкам:
-- `https://gateway.pinata.cloud/ipfs/{hash}/1.png`
-- `https://gateway.pinata.cloud/ipfs/{hash}/1.json`
+Публичные ссылки формируются так:
+- AWS S3: `https://{bucket}.s3.{region}.amazonaws.com/{prefix}/images/{tokenId}.png`
+- Кастомный CDN/Endpoint: `{S3_PUBLIC_BASE_URL}/{prefix}/images/{tokenId}.png`
 
 ## 📊 Мониторинг
 
@@ -249,7 +251,7 @@ function MintPage() {
 - ✅ Успешные операции  
 - ❌ Ошибки
 - 🎧 События блокчейна
-- 📤 Загрузки в Pinata
+- 📤 Загрузки в S3
 - 🎨 Генерация NFT
 
 ## 🚦 Deployment

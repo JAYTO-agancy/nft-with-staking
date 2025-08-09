@@ -4,7 +4,7 @@ import {
   RarityLevel,
 } from "../types";
 import { NFTGeneratorService } from "./nftGenerator";
-import { PinataService } from "./pinata";
+import { S3Service } from "./s3";
 import { v4 as uuidv4 } from "uuid";
 
 export class JobManagerService {
@@ -13,13 +13,12 @@ export class JobManagerService {
     GenerationJob
   > = new Map();
   private nftGenerator: NFTGeneratorService;
-  private pinataService: PinataService;
+  private s3Service: S3Service;
 
   constructor() {
     this.nftGenerator =
       new NFTGeneratorService();
-    this.pinataService =
-      new PinataService();
+    this.s3Service = new S3Service();
   }
 
   /**
@@ -94,9 +93,9 @@ export class JobManagerService {
         "uploading"
       );
 
-      // Upload to Pinata
+      // Upload to S3
       const imageUrl =
-        await this.pinataService.uploadImage(
+        await this.s3Service.uploadImage(
           imagePath,
           job.tokenId
         );
@@ -105,7 +104,7 @@ export class JobManagerService {
       metadata.image = imageUrl;
 
       const metadataUrl =
-        await this.pinataService.uploadMetadata(
+        await this.s3Service.uploadMetadata(
           metadata,
           job.tokenId
         );
