@@ -1,15 +1,21 @@
 "use client";
 
-import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  usePublicClient,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
 import { NFTStakingAbi, StakableNFTAbi } from "@/shared/lib/abis";
 import { NFTCard } from "@/shared/components/NFTCard";
+import { FloatingCoins } from "@/shared/components/FloatingCoins";
 import { Skeleton } from "@/shared/ui/kit/skeleton";
 import { Button } from "@/shared/ui/kit/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/kit/card";
 import { Badge } from "@/shared/ui/kit/badge";
-import { Coins, Clock, Zap, TrendingUp, Star } from "lucide-react";
+import { Coins, Clock, Zap, TrendingUp, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPublicClient, webSocket } from "viem";
 import { sepolia } from "viem/chains";
@@ -25,12 +31,32 @@ type TokenInfo = {
 export default function StakingPage() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract, isPending, data: txHash } = useWriteContract();
+  const { isSuccess: txSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
   const [tokens, setTokens] = useState<TokenInfo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<Record<number, boolean>>(
+    {},
+  );
+  const wsClient = useRef<ReturnType<typeof createPublicClient> | null>(null);
 
   const nftAddress = CONTRACTS_ADDRESS.StakableNFT;
   const stakingAddress = CONTRACTS_ADDRESS.NFTStaking;
+
+  // Initialize WebSocket client
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_WS_RPC_URL;
+    if (url && !wsClient.current) {
+      try {
+        wsClient.current = createPublicClient({
+          chain: sepolia,
+          transport: webSocket(url, { retryCount: 0 }),
+        });
+      } catch {}
+    }
+  }, []);
 
   async function loadData() {
     if (!address || !publicClient) return;
@@ -123,26 +149,136 @@ export default function StakingPage() {
     loadData();
   }, [address, publicClient]);
 
-  async function stakeSelected(ids: number[]) {
-    if (!ids.length) return;
-    await writeContract({
+  // Auto-reload after successful transaction
+  useEffect(() => {
+    if (txSuccess) {
+      loadData();
+    }
+  }, [txSuccess]);
+
+  // WebSocket subscriptions for real-time updates
+  useEffect(() => {
+    const client = wsClient.current;
+    if (!client || !address) return;
+
+    const unwatchStake = client.watchContractEvent?.({
       address: stakingAddress,
       abi: NFTStakingAbi as any,
-      functionName: "stake",
-      args: [ids.map((x) => BigInt(x))],
+      eventName: "NFTStaked",
+      onLogs: (logs: any[]) => {
+        for (const log of logs) {
+          const owner = log.args?.owner as string;
+          const tokenId = Number(log.args?.tokenId ?? 0);
+
+          if (owner?.toLowerCase() === address.toLowerCase()) {
+            setTokens((prev) =>
+              prev.map((t) =>
+                t.tokenId === tokenId ? { ...t, staked: true } : t,
+              ),
+            );
+            setActionLoading((prev) => ({ ...prev, [tokenId]: false }));
+          }
+        }
+      },
+      onError: () => {},
     });
-    await loadData();
+
+    const unwatchUnstake = client.watchContractEvent?.({
+      address: stakingAddress,
+      abi: NFTStakingAbi as any,
+      eventName: "NFTUnstaked",
+      onLogs: (logs: any[]) => {
+        for (const log of logs) {
+          const owner = log.args?.owner as string;
+          const tokenId = Number(log.args?.tokenId ?? 0);
+
+          if (owner?.toLowerCase() === address.toLowerCase()) {
+            setTokens((prev) =>
+              prev.map((t) =>
+                t.tokenId === tokenId
+                  ? { ...t, staked: false, pending: 0n }
+                  : t,
+              ),
+            );
+            setActionLoading((prev) => ({ ...prev, [tokenId]: false }));
+          }
+        }
+      },
+      onError: () => {},
+    });
+
+    const unwatchRewards = client.watchContractEvent?.({
+      address: stakingAddress,
+      abi: NFTStakingAbi as any,
+      eventName: "RewardsClaimed",
+      onLogs: (logs: any[]) => {
+        for (const log of logs) {
+          const user = log.args?.user as string;
+
+          if (user?.toLowerCase() === address.toLowerCase()) {
+            // Reset pending rewards for all staked tokens
+            setTokens((prev) =>
+              prev.map((t) => (t.staked ? { ...t, pending: 0n } : t)),
+            );
+          }
+        }
+      },
+      onError: () => {},
+    });
+
+    return () => {
+      try {
+        unwatchStake?.();
+        unwatchUnstake?.();
+        unwatchRewards?.();
+      } catch {}
+    };
+  }, [address, stakingAddress]);
+
+  async function stakeSelected(ids: number[]) {
+    if (!ids.length) return;
+
+    // Set loading state for each token
+    setActionLoading((prev) =>
+      ids.reduce((acc, id) => ({ ...acc, [id]: true }), prev),
+    );
+
+    try {
+      await writeContract({
+        address: stakingAddress,
+        abi: NFTStakingAbi as any,
+        functionName: "stake",
+        args: [ids.map((x) => BigInt(x))],
+      });
+    } catch (error) {
+      // Reset loading state on error
+      setActionLoading((prev) =>
+        ids.reduce((acc, id) => ({ ...acc, [id]: false }), prev),
+      );
+      throw error;
+    }
   }
 
   async function unstakeSelected(ids: number[]) {
     if (!ids.length) return;
-    await writeContract({
-      address: stakingAddress,
-      abi: NFTStakingAbi as any,
-      functionName: "unstake",
-      args: [ids.map((x) => BigInt(x))],
-    });
-    await loadData();
+
+    setActionLoading((prev) =>
+      ids.reduce((acc, id) => ({ ...acc, [id]: true }), prev),
+    );
+
+    try {
+      await writeContract({
+        address: stakingAddress,
+        abi: NFTStakingAbi as any,
+        functionName: "unstake",
+        args: [ids.map((x) => BigInt(x))],
+      });
+    } catch (error) {
+      setActionLoading((prev) =>
+        ids.reduce((acc, id) => ({ ...acc, [id]: false }), prev),
+      );
+      throw error;
+    }
   }
 
   async function claimAll() {
@@ -152,27 +288,53 @@ export default function StakingPage() {
       functionName: "claimAllRewards",
       args: [],
     });
-    await loadData();
   }
 
   async function approveNFT(tokenId: number) {
-    await writeContract({
-      address: nftAddress,
-      abi: StakableNFTAbi as any,
-      functionName: "approve",
-      args: [stakingAddress, BigInt(tokenId)],
-    });
-    await loadData();
+    setActionLoading((prev) => ({ ...prev, [tokenId]: true }));
+
+    try {
+      await writeContract({
+        address: nftAddress,
+        abi: StakableNFTAbi as any,
+        functionName: "approve",
+        args: [stakingAddress, BigInt(tokenId)],
+      });
+
+      // Optimistically update approval state
+      setTokens((prev) =>
+        prev.map((t) => (t.tokenId === tokenId ? { ...t, approved: true } : t)),
+      );
+    } catch (error) {
+      setActionLoading((prev) => ({ ...prev, [tokenId]: false }));
+      throw error;
+    }
   }
 
   async function approveAllNFTs() {
-    await writeContract({
-      address: nftAddress,
-      abi: StakableNFTAbi as any,
-      functionName: "setApprovalForAll",
-      args: [stakingAddress, true],
-    });
-    await loadData();
+    const unapprovedIds = unstaked
+      .filter((t) => !t.approved)
+      .map((t) => t.tokenId);
+    setActionLoading((prev) =>
+      unapprovedIds.reduce((acc, id) => ({ ...acc, [id]: true }), prev),
+    );
+
+    try {
+      await writeContract({
+        address: nftAddress,
+        abi: StakableNFTAbi as any,
+        functionName: "setApprovalForAll",
+        args: [stakingAddress, true],
+      });
+
+      // Optimistically update approval state for all tokens
+      setTokens((prev) => prev.map((t) => ({ ...t, approved: true })));
+    } catch (error) {
+      setActionLoading((prev) =>
+        unapprovedIds.reduce((acc, id) => ({ ...acc, [id]: false }), prev),
+      );
+      throw error;
+    }
   }
 
   const unstaked = tokens.filter((t) => !t.staked);
@@ -308,8 +470,17 @@ export default function StakingPage() {
             disabled={!staked.length || isPending}
             className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
           >
-            <Coins className="mr-2 h-4 w-4" />
-            Claim All Rewards
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Claiming...
+              </>
+            ) : (
+              <>
+                <Coins className="mr-2 h-4 w-4" />
+                Claim All Rewards
+              </>
+            )}
           </Button>
 
           <Button
@@ -380,20 +551,34 @@ export default function StakingPage() {
                         {!t.approved ? (
                           <Button
                             onClick={() => approveNFT(t.tokenId)}
-                            disabled={isPending}
+                            disabled={isPending || actionLoading[t.tokenId]}
                             size="sm"
                             className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
                           >
-                            Approve
+                            {actionLoading[t.tokenId] ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Approving...
+                              </>
+                            ) : (
+                              "Approve"
+                            )}
                           </Button>
                         ) : (
                           <Button
                             onClick={() => stakeSelected([t.tokenId])}
-                            disabled={isPending}
+                            disabled={isPending || actionLoading[t.tokenId]}
                             size="sm"
                             className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
                           >
-                            Stake
+                            {actionLoading[t.tokenId] ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Staking...
+                              </>
+                            ) : (
+                              "Stake"
+                            )}
                           </Button>
                         )}
                       </motion.div>
@@ -422,11 +607,17 @@ export default function StakingPage() {
                     {staked.map((t) => (
                       <motion.div
                         key={t.tokenId}
-                        className="space-y-3"
+                        className="relative space-y-3"
                         whileHover={{ scale: 1.02 }}
                         transition={{ type: "spring", damping: 25 }}
                       >
-                        <NFTCard tokenId={t.tokenId} compact />
+                        <div className="relative">
+                          <NFTCard tokenId={t.tokenId} compact />
+                          <FloatingCoins
+                            active={t.staked && Number(t.pending || 0n) > 0}
+                            count={4}
+                          />
+                        </div>
 
                         <div className="space-y-2">
                           <Badge
@@ -439,11 +630,18 @@ export default function StakingPage() {
 
                           <Button
                             onClick={() => unstakeSelected([t.tokenId])}
-                            disabled={isPending}
+                            disabled={isPending || actionLoading[t.tokenId]}
                             size="sm"
                             className="w-full bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800"
                           >
-                            Unstake
+                            {actionLoading[t.tokenId] ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Unstaking...
+                              </>
+                            ) : (
+                              "Unstake"
+                            )}
                           </Button>
                         </div>
                       </motion.div>
