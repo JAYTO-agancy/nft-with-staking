@@ -1,17 +1,25 @@
 "use client";
 
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { useEffect, useState } from "react";
+import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
 import { NFTStakingAbi, StakableNFTAbi } from "@/shared/lib/abis";
-import Image from "next/image";
 import { NFTCard } from "@/shared/components/NFTCard";
+import { Skeleton } from "@/shared/ui/kit/skeleton";
+import { Button } from "@/shared/ui/kit/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/kit/card";
+import { Badge } from "@/shared/ui/kit/badge";
+import { Coins, Clock, Zap, TrendingUp, Star } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { createPublicClient, webSocket } from "viem";
+import { sepolia } from "viem/chains";
 
 type TokenInfo = {
   tokenId: number;
   staked: boolean;
   pending?: bigint;
   stakedAt?: bigint;
+  approved?: boolean;
 };
 
 export default function StakingPage() {
@@ -61,6 +69,33 @@ export default function StakingPage() {
         const staked = stakedSet.has(id);
         let pending: bigint | undefined;
         let stakedAt: bigint | undefined;
+        let approved = false;
+
+        // Check if NFT is approved for staking contract
+        if (!staked) {
+          try {
+            const approvedAddress = (await publicClient.readContract({
+              address: nftAddress,
+              abi: StakableNFTAbi as any,
+              functionName: "getApproved",
+              args: [BigInt(id)],
+            })) as string;
+            approved =
+              approvedAddress.toLowerCase() === stakingAddress.toLowerCase();
+
+            // Also check if all tokens are approved
+            if (!approved) {
+              const isApprovedForAll = (await publicClient.readContract({
+                address: nftAddress,
+                abi: StakableNFTAbi as any,
+                functionName: "isApprovedForAll",
+                args: [address, stakingAddress],
+              })) as boolean;
+              approved = isApprovedForAll;
+            }
+          } catch {}
+        }
+
         if (staked) {
           const info = (await publicClient.readContract({
             address: stakingAddress,
@@ -76,7 +111,7 @@ export default function StakingPage() {
             args: [BigInt(id)],
           })) as bigint;
         }
-        items.push({ tokenId: id, staked, pending, stakedAt });
+        items.push({ tokenId: id, staked, pending, stakedAt, approved });
       }
       setTokens(items.sort((a, b) => a.tokenId - b.tokenId));
     } finally {
@@ -120,85 +155,306 @@ export default function StakingPage() {
     await loadData();
   }
 
+  async function approveNFT(tokenId: number) {
+    await writeContract({
+      address: nftAddress,
+      abi: StakableNFTAbi as any,
+      functionName: "approve",
+      args: [stakingAddress, BigInt(tokenId)],
+    });
+    await loadData();
+  }
+
+  async function approveAllNFTs() {
+    await writeContract({
+      address: nftAddress,
+      abi: StakableNFTAbi as any,
+      functionName: "setApprovalForAll",
+      args: [stakingAddress, true],
+    });
+    await loadData();
+  }
+
   const unstaked = tokens.filter((t) => !t.staked);
   const staked = tokens.filter((t) => t.staked);
+  const unapprovedCount = unstaked.filter((t) => !t.approved).length;
+  const totalPendingRewards =
+    staked.reduce((acc, t) => acc + Number(t.pending || 0n), 0) / 1e18;
 
   return (
-    <div className="container mx-auto px-4 py-10 text-white">
-      <h1 className="mb-6 text-3xl font-bold">Staking</h1>
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+      <div className="container mx-auto px-4 py-12 text-white">
+        {/* Header */}
+        <motion.div
+          className="mb-12 text-center"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-8 py-4 backdrop-blur-xl">
+            <Star className="h-5 w-5 text-purple-400" />
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-sm font-medium text-transparent">
+              NFT Staking
+            </span>
+            <Zap className="h-5 w-5 text-purple-400" />
+          </div>
+          <h1 className="mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-5xl font-black text-transparent">
+            STAKE & EARN
+          </h1>
+          <p className="mx-auto max-w-2xl text-lg text-gray-400">
+            Stake your Plumffel NFTs to earn passive rewards. The rarer your
+            NFT, the higher your earning potential!
+          </p>
+        </motion.div>
 
-      <div className="mb-6 flex gap-3">
-        <button
-          className="rounded bg-purple-600 px-4 py-2 disabled:opacity-50"
-          onClick={() => stakeSelected(unstaked.map((t) => t.tokenId))}
-          disabled={!unstaked.length || isPending}
+        {/* Stats Cards */}
+        <motion.div
+          className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
         >
-          Stake All Owned
-        </button>
-        <button
-          className="rounded bg-pink-600 px-4 py-2 disabled:opacity-50"
-          onClick={() => unstakeSelected(staked.map((t) => t.tokenId))}
-          disabled={!staked.length || isPending}
-        >
-          Unstake All
-        </button>
-        <button
-          className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
-          onClick={claimAll}
-          disabled={!staked.length || isPending}
-        >
-          Claim All Rewards
-        </button>
-        <button
-          className="rounded border border-white/20 px-4 py-2"
-          onClick={loadData}
-        >
-          Refresh
-        </button>
-      </div>
-
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <section>
-            <h2 className="mb-4 text-xl font-semibold">Your NFTs (Unstaked)</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {unstaked.map((t) => (
-                <div key={t.tokenId}>
-                  <NFTCard tokenId={t.tokenId} compact />
-                  <button
-                    className="mt-2 w-full rounded bg-purple-600 px-3 py-2 text-sm"
-                    onClick={() => stakeSelected([t.tokenId])}
-                  >
-                    Stake
-                  </button>
+          <Card className="border-purple-500/20 bg-gradient-to-br from-purple-900/30 to-purple-800/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-300">
+                    Untaked NFTs
+                  </p>
+                  <p className="text-2xl font-bold text-white">
+                    {unstaked.length}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </section>
+                <Zap className="h-8 w-8 text-purple-400" />
+              </div>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="mb-4 text-xl font-semibold">Staked NFTs</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {staked.map((t) => (
-                <div key={t.tokenId}>
-                  <NFTCard tokenId={t.tokenId} compact />
-                  <div className="mt-2 mb-2 text-xs text-gray-300">
-                    Pending: {t.pending ? Number(t.pending) / 1e18 : 0} RWD
+          <Card className="border-pink-500/20 bg-gradient-to-br from-pink-900/30 to-pink-800/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-pink-300">
+                    Staked NFTs
+                  </p>
+                  <p className="text-2xl font-bold text-white">
+                    {staked.length}
+                  </p>
+                </div>
+                <Star className="h-8 w-8 text-pink-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-900/30 to-blue-800/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-300">
+                    Pending Rewards
+                  </p>
+                  <p className="text-2xl font-bold text-white">
+                    {totalPendingRewards.toFixed(2)}
+                  </p>
+                </div>
+                <Coins className="h-8 w-8 text-blue-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Action Buttons */}
+        <motion.div
+          className="mb-8 flex flex-wrap justify-center gap-4"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        >
+          {unapprovedCount > 0 && (
+            <Button
+              onClick={approveAllNFTs}
+              disabled={isPending}
+              className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+            >
+              <Zap className="mr-2 h-4 w-4" />
+              Approve All NFTs ({unapprovedCount})
+            </Button>
+          )}
+
+          <Button
+            onClick={() =>
+              stakeSelected(
+                unstaked.filter((t) => t.approved).map((t) => t.tokenId),
+              )
+            }
+            disabled={!unstaked.filter((t) => t.approved).length || isPending}
+            className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+          >
+            <Star className="mr-2 h-4 w-4" />
+            Stake All Approved
+          </Button>
+
+          <Button
+            onClick={() => unstakeSelected(staked.map((t) => t.tokenId))}
+            disabled={!staked.length || isPending}
+            className="bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800"
+          >
+            <Clock className="mr-2 h-4 w-4" />
+            Unstake All
+          </Button>
+
+          <Button
+            onClick={claimAll}
+            disabled={!staked.length || isPending}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          >
+            <Coins className="mr-2 h-4 w-4" />
+            Claim All Rewards
+          </Button>
+
+          <Button
+            onClick={loadData}
+            variant="outline"
+            className="border-white/20 hover:bg-white/10"
+          >
+            Refresh
+          </Button>
+        </motion.div>
+
+        {loading ? (
+          <motion.div
+            className="grid grid-cols-1 gap-8 md:grid-cols-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="border-white/10 bg-white/5">
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 4 }).map((_, j) => (
+                      <div key={j} className="space-y-2">
+                        <Skeleton className="aspect-square w-full rounded-lg" />
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    className="w-full rounded bg-pink-600 px-3 py-2 text-sm"
-                    onClick={() => unstakeSelected([t.tokenId])}
-                  >
-                    Unstake
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            className="grid grid-cols-1 gap-8 md:grid-cols-2"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            {/* Unstaked NFTs */}
+            <Card className="border-purple-500/20 bg-gradient-to-br from-purple-900/20 to-purple-800/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Zap className="h-5 w-5 text-purple-400" />
+                  Your NFTs ({unstaked.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {unstaked.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400">
+                    <Star className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                    <p>No NFTs available for staking</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {unstaked.map((t) => (
+                      <motion.div
+                        key={t.tokenId}
+                        className="space-y-3"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ type: "spring", damping: 25 }}
+                      >
+                        <NFTCard tokenId={t.tokenId} compact />
+
+                        {!t.approved ? (
+                          <Button
+                            onClick={() => approveNFT(t.tokenId)}
+                            disabled={isPending}
+                            size="sm"
+                            className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+                          >
+                            Approve
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => stakeSelected([t.tokenId])}
+                            disabled={isPending}
+                            size="sm"
+                            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                          >
+                            Stake
+                          </Button>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Staked NFTs */}
+            <Card className="border-pink-500/20 bg-gradient-to-br from-pink-900/20 to-pink-800/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Star className="h-5 w-5 text-pink-400" />
+                  Staked NFTs ({staked.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {staked.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400">
+                    <Clock className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                    <p>No NFTs currently staked</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {staked.map((t) => (
+                      <motion.div
+                        key={t.tokenId}
+                        className="space-y-3"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ type: "spring", damping: 25 }}
+                      >
+                        <NFTCard tokenId={t.tokenId} compact />
+
+                        <div className="space-y-2">
+                          <Badge
+                            variant="secondary"
+                            className="w-full justify-center border-blue-500/20 bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-blue-300"
+                          >
+                            <Coins className="mr-1 h-3 w-3" />
+                            {(Number(t.pending || 0n) / 1e18).toFixed(4)} RWD
+                          </Badge>
+
+                          <Button
+                            onClick={() => unstakeSelected([t.tokenId])}
+                            disabled={isPending}
+                            size="sm"
+                            className="w-full bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800"
+                          >
+                            Unstake
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

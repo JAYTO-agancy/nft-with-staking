@@ -10,6 +10,7 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { sepolia } from "wagmi/chains";
 import { QueryClient } from "@tanstack/react-query";
 import { AppWalletProvider } from "@/shared/context/app-wallet";
+import { MintNotificationProvider } from "@/shared/providers/MintNotificationProvider";
 
 const balooFont = Baloo_2({
   variable: "--font-baloo",
@@ -35,12 +36,14 @@ export default function RootLayout({
         className={`${balooFont.variable} ${balooFont.className} antialiased`}
       >
         <AppWalletProvider>
-          <div className="relative flex min-h-screen flex-col">
-            <Header />
-            <main className="grow">{children}</main>
-            <Footer />
-          </div>
-          <Toaster richColors />
+          <MintNotificationProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <Header />
+              <main className="grow">{children}</main>
+              <Footer />
+            </div>
+            <Toaster richColors />
+          </MintNotificationProvider>
         </AppWalletProvider>
       </body>
     </html>
