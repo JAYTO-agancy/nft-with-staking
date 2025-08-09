@@ -3,3 +3,6 @@ export const CONTRACTS_ADDRESS = {
   RewardToken: "0xa293bd9dfe32c5389cea73c0efdd6b1c3163fea6" as `0x${string}`,
   NFTStaking: "0x51402c4bfd5c700de666d8e23b4f5d836b309854" as `0x${string}`,
 };
+
+export const BASE_URL_NFT =
+  "https://s3.twcstorage.ru/c9d67636-856bad52-d66f-44f4-8928-4d1e0918544d/nft";

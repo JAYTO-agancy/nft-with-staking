@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
-import { Sparkles, Clock, ExternalLink, Star, Zap, Eye } from "lucide-react";
+import { Sparkles, Clock, ExternalLink, Star, Eye } from "lucide-react";
 import {
   motion,
   useInView,
@@ -13,7 +13,7 @@ import {
   Variants,
 } from "framer-motion";
 import { useRef } from "react";
-import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
+import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
 
 const rarityConfig: Record<
   string,
@@ -157,29 +157,52 @@ export function LastMintedSection() {
           { length: 5 },
           (_, i) => Number(totalSupply) - i,
         ).filter((id) => id > 0);
+
+        const RARITY_NAMES = [
+          "Common",
+          "Uncommon",
+          "Rare",
+          "Epic",
+          "Legendary",
+        ];
+
         const nftData = await Promise.all(
           lastIds.map(async (id) => {
-            const tokenURI = await publicClient?.readContract({
-              address: CONTRACTS_ADDRESS.StakableNFT,
-              abi: StakableNFTAbi,
-              functionName: "tokenURI",
-              args: [BigInt(id)],
-            });
-            let imageUrl = "";
-            let rarity = "";
-            console.log("tokenURI: ", tokenURI);
+            // Build S3 URLs directly
+            const jsonUrl = `${BASE_URL_NFT}/${id}.json`;
+            const imageUrl = `${BASE_URL_NFT}/${id}.png`;
 
+            let rarity = "";
             try {
-              const res = await fetch(
-                tokenURI?.replace("ipfs://", "https://ipfs.io/ipfs/") || "",
-              );
-              const meta = await res.json();
-              imageUrl =
-                meta.image?.replace("ipfs://", "https://ipfs.io/ipfs/") || "";
-              rarity =
-                meta.attributes?.find((a: any) => a.trait_type === "Rarity")
-                  ?.value || "";
+              const res = await fetch(jsonUrl, { cache: "no-store" });
+              if (res.ok) {
+                const meta = await res.json();
+                rarity =
+                  meta.attributes?.find((a: any) => a.trait_type === "Rarity")
+                    ?.value || "";
+              }
             } catch {}
+
+            // Fallback to chain if metadata not available or rarity empty
+            if (!rarity) {
+              try {
+                const onchainRarity = await publicClient?.readContract({
+                  address: CONTRACTS_ADDRESS.StakableNFT,
+                  abi: StakableNFTAbi,
+                  functionName: "getTokenRarity",
+                  args: [BigInt(id)],
+                });
+                const idx = Number(onchainRarity);
+                if (
+                  !Number.isNaN(idx) &&
+                  idx >= 0 &&
+                  idx < RARITY_NAMES.length
+                ) {
+                  rarity = RARITY_NAMES[idx];
+                }
+              } catch {}
+            }
+
             return { id, imageUrl, rarity };
           }),
         );
