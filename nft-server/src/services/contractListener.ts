@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   http,
+  webSocket,
   parseAbi,
   type PublicClient,
   type Address,
@@ -18,6 +19,11 @@ export class ContractListenerService {
   private pollingInterval: NodeJS.Timeout | null =
     null;
   private lastProcessedBlock = 0;
+  private wsClient: PublicClient | null =
+    null;
+  private wsUnwatch:
+    | (() => void)
+    | null = null;
 
   constructor() {
     this.contractAddress = process.env
@@ -43,6 +49,29 @@ export class ContractListenerService {
       chain: sepolia,
       transport: http(rpcUrl),
     });
+
+    // Инициализируем WS-клиент при наличии WS_RPC_URL
+    const wsUrl =
+      process.env.WS_RPC_URL;
+
+    if (wsUrl) {
+      try {
+        this.wsClient =
+          createPublicClient({
+            chain: sepolia,
+            transport: webSocket(wsUrl),
+          });
+        console.log(
+          "🔌 WS transport enabled"
+        );
+      } catch (e) {
+        this.wsClient = null;
+        console.warn(
+          "⚠️ Failed to initialize WS transport, will use polling only",
+          e
+        );
+      }
+    }
   }
 
   /**
@@ -67,7 +96,71 @@ export class ContractListenerService {
 
     this.isListening = true;
 
-    // Start polling for events every 10 seconds
+    // Пытаемся подписаться через WS
+    if (this.wsClient) {
+      const abi = parseAbi([
+        "event NFTMinted(address indexed to, uint256 indexed tokenId, uint8 rarity)",
+      ]);
+      try {
+        this.wsUnwatch =
+          this.wsClient.watchContractEvent(
+            {
+              address:
+                this.contractAddress,
+              abi,
+              eventName: "NFTMinted",
+              onLogs: (logs) => {
+                for (const log of logs) {
+                  const event: ContractEvent =
+                    {
+                      tokenId: Number(
+                        log.args
+                          ?.tokenId
+                      ),
+                      to:
+                        (log.args
+                          ?.to as Address) ||
+                        zeroAddress,
+                      from: zeroAddress,
+                      transactionHash:
+                        log.transactionHash,
+                      blockNumber:
+                        Number(
+                          log.blockNumber ??
+                            0
+                        ),
+                      rarity: Number(
+                        log.args
+                          ?.rarity ?? 0
+                      ),
+                    };
+                  console.log(
+                    `🎉 [WS] NFTMinted: Token ${event.tokenId} to ${event.to} (Rarity: ${event.rarity})`
+                  );
+                  callback(event);
+                }
+              },
+              onError: (err) => {
+                console.error(
+                  "❌ WS subscription error:",
+                  err
+                );
+              },
+            }
+          );
+        console.log(
+          "✅ WS subscription started for NFTMinted"
+        );
+        return; // если WS работает — polling не нужен
+      } catch (e) {
+        console.warn(
+          "⚠️ Failed to start WS subscription, falling back to polling",
+          e
+        );
+      }
+    }
+
+    // Фоллбэк: polling каждые 10 секунд
     this.pollingInterval = setInterval(
       async () => {
         try {
@@ -82,8 +175,7 @@ export class ContractListenerService {
         }
       },
       10000
-    ); // 10 seconds
-
+    );
     console.log(
       "✅ Contract listener started (polling mode)"
     );
@@ -105,6 +197,13 @@ export class ContractListenerService {
         this.pollingInterval
       );
       this.pollingInterval = null;
+    }
+
+    if (this.wsUnwatch) {
+      try {
+        this.wsUnwatch();
+      } catch {}
+      this.wsUnwatch = null;
     }
 
     this.isListening = false;
