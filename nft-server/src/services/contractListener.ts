@@ -24,6 +24,11 @@ export class ContractListenerService {
   private wsUnwatch:
     | (() => void)
     | null = null;
+  private wsUrl: string | undefined;
+  private wsReconnectTimer: NodeJS.Timeout | null =
+    null;
+  private wsReconnectAttempts = 0;
+  private readonly pollIntervalMs = 10000;
 
   constructor() {
     this.contractAddress = process.env
@@ -51,15 +56,17 @@ export class ContractListenerService {
     });
 
     // Инициализируем WS-клиент при наличии WS_RPC_URL
-    const wsUrl =
-      process.env.WS_RPC_URL;
+    this.wsUrl = process.env.WS_RPC_URL;
 
-    if (wsUrl) {
+    if (this.wsUrl) {
       try {
         this.wsClient =
           createPublicClient({
             chain: sepolia,
-            transport: webSocket(wsUrl),
+            transport: webSocket(
+              this.wsUrl,
+              { retryCount: 0 }
+            ),
           });
         console.log(
           "🔌 WS transport enabled"
@@ -98,90 +105,22 @@ export class ContractListenerService {
 
     // Пытаемся подписаться через WS
     if (this.wsClient) {
-      const abi = parseAbi([
-        "event NFTMinted(address indexed to, uint256 indexed tokenId, uint8 rarity)",
-      ]);
-      try {
-        this.wsUnwatch =
-          this.wsClient.watchContractEvent(
-            {
-              address:
-                this.contractAddress,
-              abi,
-              eventName: "NFTMinted",
-              onLogs: (logs) => {
-                for (const log of logs) {
-                  const event: ContractEvent =
-                    {
-                      tokenId: Number(
-                        log.args
-                          ?.tokenId
-                      ),
-                      to:
-                        (log.args
-                          ?.to as Address) ||
-                        zeroAddress,
-                      from: zeroAddress,
-                      transactionHash:
-                        log.transactionHash,
-                      blockNumber:
-                        Number(
-                          log.blockNumber ??
-                            0
-                        ),
-                      rarity: Number(
-                        log.args
-                          ?.rarity ?? 0
-                      ),
-                    };
-                  console.log(
-                    `🎉 [WS] NFTMinted: Token ${event.tokenId} to ${event.to} (Rarity: ${event.rarity})`
-                  );
-                  callback(event);
-                }
-              },
-              onError: (err) => {
-                console.error(
-                  "❌ WS subscription error:",
-                  err
-                );
-              },
-            }
-          );
-        console.log(
-          "✅ WS subscription started for NFTMinted"
+      const ok =
+        this.startWsSubscription(
+          callback
         );
-        return; // если WS работает — polling не нужен
-      } catch (e) {
-        console.warn(
-          "⚠️ Failed to start WS subscription, falling back to polling",
-          e
-        );
-      }
+      if (ok) return;
+      this.scheduleWsReconnect(
+        callback
+      );
+    } else if (this.wsUrl) {
+      this.scheduleWsReconnect(
+        callback
+      );
     }
 
-    // Фоллбэк: polling каждые 10 секунд
-    this.pollingInterval = setInterval(
-      async () => {
-        try {
-          await this.checkForNewEvents(
-            callback
-          );
-        } catch (error) {
-          console.error(
-            "❌ Error checking for new events:",
-            error
-          );
-        }
-      },
-      10000
-    );
-    console.log(
-      "✅ Contract listener started (polling mode)"
-    );
-    console.log(
-      "📝 Polling for NFTMinted events every 10 seconds"
-    );
+    // Фоллбэк: polling
+    this.startPolling(callback);
   }
 
   /**
@@ -204,6 +143,13 @@ export class ContractListenerService {
         this.wsUnwatch();
       } catch {}
       this.wsUnwatch = null;
+    }
+
+    if (this.wsReconnectTimer) {
+      clearTimeout(
+        this.wsReconnectTimer
+      );
+      this.wsReconnectTimer = null;
     }
 
     this.isListening = false;
@@ -327,6 +273,193 @@ export class ContractListenerService {
         error
       );
     }
+  }
+
+  private startPolling(
+    callback: (
+      event: ContractEvent
+    ) => void
+  ) {
+    if (this.pollingInterval) return;
+    this.pollingInterval = setInterval(
+      async () => {
+        try {
+          await this.checkForNewEvents(
+            callback
+          );
+        } catch (error) {
+          console.error(
+            "❌ Error checking for new events:",
+            error
+          );
+        }
+      },
+      this.pollIntervalMs
+    );
+    console.log(
+      "✅ Contract listener started (polling mode)"
+    );
+    console.log(
+      `📝 Polling for NFTMinted events every ${
+        this.pollIntervalMs / 1000
+      }s`
+    );
+  }
+
+  private stopPolling() {
+    if (!this.pollingInterval) return;
+    clearInterval(this.pollingInterval);
+    this.pollingInterval = null;
+    console.log("🛑 Polling stopped");
+  }
+
+  private startWsSubscription(
+    callback: (
+      event: ContractEvent
+    ) => void
+  ): boolean {
+    if (!this.wsUrl) return false;
+    try {
+      if (!this.wsClient) {
+        this.wsClient =
+          createPublicClient({
+            chain: sepolia,
+            transport: webSocket(
+              this.wsUrl,
+              { retryCount: 0 }
+            ),
+          });
+      }
+
+      const abi = parseAbi([
+        "event NFTMinted(address indexed to, uint256 indexed tokenId, uint8 rarity)",
+      ]);
+
+      this.wsUnwatch =
+        this.wsClient.watchContractEvent(
+          {
+            address:
+              this.contractAddress,
+            abi,
+            eventName: "NFTMinted",
+            onLogs: (logs) => {
+              for (const log of logs) {
+                const event: ContractEvent =
+                  {
+                    tokenId: Number(
+                      log.args?.tokenId
+                    ),
+                    to:
+                      (log.args
+                        ?.to as Address) ||
+                      zeroAddress,
+                    from: zeroAddress,
+                    transactionHash:
+                      log.transactionHash,
+                    blockNumber: Number(
+                      log.blockNumber ??
+                        0
+                    ),
+                    rarity: Number(
+                      log.args
+                        ?.rarity ?? 0
+                    ),
+                  };
+                console.log(
+                  `🎉 [WS] NFTMinted: Token ${event.tokenId} to ${event.to} (Rarity: ${event.rarity})`
+                );
+                callback(event);
+              }
+            },
+            onError: (err) => {
+              console.error(
+                "❌ WS subscription error:",
+                err
+              );
+              this.handleWsDrop(
+                callback
+              );
+            },
+          }
+        );
+
+      console.log(
+        "✅ WS subscription started for NFTMinted"
+      );
+      // Остановим polling, если восстановился WS
+      this.stopPolling();
+      // Сбросим счетчик реконнекта
+      this.wsReconnectAttempts = 0;
+      return true;
+    } catch (e) {
+      console.warn(
+        "⚠️ Failed to start WS subscription",
+        e
+      );
+      this.handleWsDrop(callback);
+      return false;
+    }
+  }
+
+  private handleWsDrop(
+    callback: (
+      event: ContractEvent
+    ) => void
+  ) {
+    if (this.wsUnwatch) {
+      try {
+        this.wsUnwatch();
+      } catch {}
+      this.wsUnwatch = null;
+    }
+    this.wsClient = null;
+    this.startPolling(callback);
+    this.scheduleWsReconnect(callback);
+  }
+
+  private scheduleWsReconnect(
+    callback: (
+      event: ContractEvent
+    ) => void
+  ) {
+    if (
+      !this.isListening ||
+      !this.wsUrl
+    )
+      return;
+    if (this.wsReconnectTimer) return;
+
+    const base = 1000;
+    const max = 30000;
+    const delay = Math.min(
+      max,
+      base *
+        Math.pow(
+          2,
+          this.wsReconnectAttempts
+        )
+    );
+    this.wsReconnectAttempts += 1;
+
+    console.log(
+      `🔁 Scheduling WS reconnect in ${Math.round(
+        delay / 1000
+      )}s`
+    );
+    this.wsReconnectTimer = setTimeout(
+      () => {
+        this.wsReconnectTimer = null;
+        const ok =
+          this.startWsSubscription(
+            callback
+          );
+        if (!ok)
+          this.scheduleWsReconnect(
+            callback
+          );
+      },
+      delay
+    );
   }
 
   /**

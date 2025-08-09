@@ -59,9 +59,9 @@ export default function Home() {
   return (
     <>
       <HeroSection onMint={isConnected ? handleMint : undefined} />
-      <HowBuySection />
-      <MintSection onMint={handleMint} mintedNft={mintedNft} />
       <LastMintedSection />
+      <MintSection onMint={handleMint} mintedNft={mintedNft} />
+      <HowBuySection />
       <StatsSection />
       <ProjectStorySection />
     </>
