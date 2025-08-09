@@ -5,81 +5,11 @@ import {
   type PublicClient,
   type Address,
   zeroAddress,
-  type Log,
-  createWalletClient,
-  type WalletClient,
 } from "viem";
 import { sepolia } from "viem/chains";
-import {
-  ContractEvent,
-  NFTStatistics,
-} from "../types";
-import {
-  ContractStats,
-  NFTMintEvent,
-  StakableNFTAbi,
-  RarityStats,
-} from "../../shared/abis";
+import { ContractEvent } from "../types";
 
-// Используем только нужные функции для прослушки событий
-const NFT_ABI = parseAbi([
-  // Events
-  "event NFTMinted(address indexed to, uint256 indexed tokenId, uint8 rarity)",
-  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-  "event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)",
-  "event ApprovalForAll(address indexed owner, address indexed operator, bool approved)",
-  "event CommitSubmitted(address indexed user, bytes32 commitHash, uint256 timestamp)",
-  "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
-
-  // View functions
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function totalSupply() view returns (uint256)",
-  "function MAX_SUPPLY() view returns (uint256)",
-  "function mintPrice() view returns (uint256)",
-  "function ownerOf(uint256 tokenId) view returns (address)",
-  "function tokenURI(uint256 tokenId) view returns (string)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function getApproved(uint256 tokenId) view returns (address)",
-  "function isApprovedForAll(address owner, address operator) view returns (bool)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-  "function tokenByIndex(uint256 index) view returns (uint256)",
-  "function getTokenRarity(uint256 tokenId) view returns (uint8)",
-  "function getTokenMultiplier(uint256 tokenId) view returns (uint256)",
-  "function getRarityRemainingSupply(uint8 rarity) view returns (uint256)",
-  "function rarityMintedCount(uint8 rarity) view returns (uint256)",
-  "function raritySupplyLimits(uint8 rarity) view returns (uint256)",
-  "function rarityMultipliers(uint8 rarity) view returns (uint256)",
-  "function getContractOwner() view returns (address)",
-  "function owner() view returns (address)",
-  "function supportsInterface(bytes4 interfaceId) view returns (bool)",
-  "function tokenRarity(uint256 tokenId) view returns (uint8)",
-  "function commits(address user) view returns (bytes32)",
-  "function commitTimestamps(address user) view returns (uint256)",
-  "function COMMIT_DELAY() view returns (uint256)",
-  "function COMMIT_EXPIRY() view returns (uint256)",
-]);
-
-// Логируем информацию о загруженном ABI
-console.log(
-  `📋 Loaded StakableNFTAbi with ${StakableNFTAbi.length} items`
-);
-console.log(
-  `🔧 Functions: ${
-    StakableNFTAbi.filter(
-      (item: any) =>
-        item.type === "function"
-    ).length
-  }`
-);
-console.log(
-  `📡 Events: ${
-    StakableNFTAbi.filter(
-      (item: any) =>
-        item.type === "event"
-    ).length
-  }`
-);
+// Минимальный слушатель использует только событие NFTMinted
 
 export class ContractListenerService {
   private client: PublicClient;
@@ -88,15 +18,6 @@ export class ContractListenerService {
   private pollingInterval: NodeJS.Timeout | null =
     null;
   private lastProcessedBlock = 0;
-  private statistics: NFTStatistics | null =
-    null;
-  private rarityNames = [
-    "Common",
-    "Uncommon",
-    "Rare",
-    "Epic",
-    "Legendary",
-  ];
 
   constructor() {
     this.contractAddress = process.env
@@ -143,9 +64,6 @@ export class ContractListenerService {
     console.log(
       `🎧 Starting to listen for NFTMinted events on ${this.contractAddress}...`
     );
-
-    // Initialize statistics on startup
-    await this.initializeStatistics();
 
     this.isListening = true;
 
@@ -195,208 +113,11 @@ export class ContractListenerService {
     );
   }
 
-  /**
-   * Initialize statistics by collecting all existing NFTMinted events
-   */
-  private async initializeStatistics(): Promise<void> {
-    try {
-      console.log(
-        "📊 Initializing NFT statistics..."
-      );
+  // Minimal server: no statistics initialization
 
-      // Get all NFTMinted events from the beginning
-      const currentBlock =
-        await this.client.getBlockNumber();
-      const fromBlock = BigInt(0); // Start from genesis block
+  // Minimal server: no statistics updates
 
-      const logs =
-        await this.client.getLogs({
-          address: this.contractAddress,
-          event: {
-            type: "event",
-            name: "NFTMinted",
-            inputs: [
-              {
-                type: "address",
-                name: "to",
-                indexed: true,
-              },
-              {
-                type: "uint256",
-                name: "tokenId",
-                indexed: true,
-              },
-              {
-                type: "uint8",
-                name: "rarity",
-                indexed: false,
-              },
-            ],
-          },
-          fromBlock,
-          toBlock: currentBlock,
-        });
-
-      // Process all events to build statistics
-      const events: ContractEvent[] =
-        logs.map((log) => ({
-          tokenId: Number(
-            log.args.tokenId
-          ),
-          to:
-            log.args.to || zeroAddress,
-          from: zeroAddress,
-          transactionHash:
-            log.transactionHash,
-          blockNumber: Number(
-            log.blockNumber
-          ),
-          rarity: Number(
-            log.args.rarity
-          ),
-        }));
-
-      // Build rarity distribution
-      const rarityDistribution: {
-        [rarity: number]: {
-          name: string;
-          count: number;
-          percentage: number;
-        };
-      } = {};
-
-      for (
-        let rarity = 0;
-        rarity < 5;
-        rarity++
-      ) {
-        const count = events.filter(
-          (e) => e.rarity === rarity
-        ).length;
-        rarityDistribution[rarity] = {
-          name:
-            this.rarityNames[rarity] ||
-            `Rarity ${rarity}`,
-          count,
-          percentage:
-            events.length > 0
-              ? (count /
-                  events.length) *
-                100
-              : 0,
-        };
-      }
-
-      this.statistics = {
-        totalMinted: events.length,
-        rarityDistribution,
-        recentMints: events.slice(-10), // Keep last 10 mints
-        lastUpdated: Date.now(),
-      };
-
-      this.lastProcessedBlock = Number(
-        currentBlock
-      );
-
-      console.log(
-        `✅ Statistics initialized: ${events.length} total NFTs minted`
-      );
-      console.log(
-        "📊 Rarity distribution:",
-        rarityDistribution
-      );
-    } catch (error) {
-      console.error(
-        "❌ Error initializing statistics:",
-        error
-      );
-      // Initialize with empty statistics
-      this.statistics = {
-        totalMinted: 0,
-        rarityDistribution: {},
-        recentMints: [],
-        lastUpdated: Date.now(),
-      };
-    }
-  }
-
-  /**
-   * Update statistics with new event
-   */
-  private updateStatistics(
-    event: ContractEvent
-  ): void {
-    if (!this.statistics) return;
-
-    // Update total count
-    this.statistics.totalMinted++;
-
-    // Update rarity distribution
-    const rarity = event.rarity || 0;
-    if (
-      !this.statistics
-        .rarityDistribution[rarity]
-    ) {
-      this.statistics.rarityDistribution[
-        rarity
-      ] = {
-        name:
-          this.rarityNames[rarity] ||
-          `Rarity ${rarity}`,
-        count: 0,
-        percentage: 0,
-      };
-    }
-
-    this.statistics.rarityDistribution[
-      rarity
-    ].count++;
-
-    // Recalculate percentages
-    Object.keys(
-      this.statistics.rarityDistribution
-    ).forEach((rarityKey) => {
-      const rarityNum =
-        parseInt(rarityKey);
-      if (this.statistics) {
-        this.statistics.rarityDistribution[
-          rarityNum
-        ].percentage =
-          (this.statistics
-            .rarityDistribution[
-            rarityNum
-          ].count /
-            this.statistics
-              .totalMinted) *
-          100;
-      }
-    });
-
-    // Update recent mints
-    this.statistics.recentMints.push(
-      event
-    );
-    if (
-      this.statistics.recentMints
-        .length > 10
-    ) {
-      this.statistics.recentMints.shift(); // Remove oldest
-    }
-
-    this.statistics.lastUpdated =
-      Date.now();
-
-    console.log(
-      `📊 Statistics updated: Total ${this.statistics.totalMinted}, Rarity ${rarity}: ${this.statistics.rarityDistribution[rarity].count}`
-    );
-  }
-
-  /**
-   * Get current statistics
-   */
-  getStatistics(): NFTStatistics | null {
-    return this.statistics;
-  }
+  // Minimal server: no statistics endpoint
 
   /**
    * Check for new NFTMinted events
@@ -489,9 +210,6 @@ export class ContractListenerService {
             `🎉 New NFTMinted event: Token ${event.tokenId} to ${event.to} (Rarity: ${event.rarity})`
           );
 
-          // Update statistics with new event
-          this.updateStatistics(event);
-
           // Call the callback
           callback(event);
         } catch (error) {
@@ -513,385 +231,37 @@ export class ContractListenerService {
   }
 
   /**
-   * Get token owner
+   * Test contract connection
    */
-  async getTokenOwner(
-    tokenId: number
-  ): Promise<string> {
+  async testConnection(): Promise<boolean> {
     try {
       console.log(
-        `🔍 Getting owner of token ${tokenId}...`
+        "🔍 Testing contract connection..."
       );
-
-      const owner =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "ownerOf",
-            args: [BigInt(tokenId)],
-          }
-        )) as string;
-
+      const block =
+        await this.client.getBlockNumber();
       console.log(
-        `✅ Token ${tokenId} owner: ${owner}`
+        `✅ Connected. Current block: ${block}`
       );
-      return owner;
+      return true;
     } catch (error) {
       console.error(
-        `❌ Failed to get owner of token ${tokenId}:`,
+        "❌ Contract connection failed:",
         error
       );
-      throw new Error(
-        `Failed to get owner of token ${tokenId}: ${error}`
-      );
+      return false;
     }
   }
 
   /**
-   * Get current token URI
-   */
-  async getTokenURI(
-    tokenId: number
-  ): Promise<string> {
-    try {
-      console.log(
-        `🔍 Getting URI of token ${tokenId}...`
-      );
-
-      const uri =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "tokenURI",
-            args: [BigInt(tokenId)],
-          }
-        )) as string;
-
-      console.log(
-        `✅ Token ${tokenId} URI: ${uri}`
-      );
-      return uri;
-    } catch (error) {
-      console.error(
-        `❌ Failed to get URI of token ${tokenId}:`,
-        error
-      );
-      throw new Error(
-        `Failed to get URI of token ${tokenId}: ${error}`
-      );
-    }
-  }
-
-  /**
-   * Get total supply from contract
-   */
-  async getTotalSupply(): Promise<number> {
-    try {
-      console.log(
-        "🔍 Getting total supply from contract..."
-      );
-
-      const totalSupply =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "totalSupply",
-          }
-        )) as bigint;
-
-      const supply = Number(
-        totalSupply
-      );
-      console.log(
-        `✅ Total supply: ${supply}`
-      );
-      return supply;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get total supply:",
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get max supply from contract
-   */
-  async getMaxSupply(): Promise<number> {
-    try {
-      console.log(
-        "🔍 Getting max supply from contract..."
-      );
-
-      const maxSupply =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "MAX_SUPPLY",
-          }
-        )) as bigint;
-
-      const supply = Number(maxSupply);
-      console.log(
-        `✅ Max supply: ${supply}`
-      );
-      return supply;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get max supply:",
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get mint price from contract
-   */
-  async getMintPrice(): Promise<number> {
-    try {
-      console.log(
-        "🔍 Getting mint price from contract..."
-      );
-
-      const mintPrice =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "mintPrice",
-          }
-        )) as bigint;
-
-      const price = Number(mintPrice);
-      console.log(
-        `✅ Mint price: ${price} wei`
-      );
-      return price;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get mint price:",
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get token rarity
-   */
-  async getTokenRarity(
-    tokenId: number
-  ): Promise<number> {
-    try {
-      console.log(
-        `🔍 Getting rarity for token ${tokenId}...`
-      );
-
-      const rarity =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName:
-              "getTokenRarity",
-            args: [BigInt(tokenId)],
-          }
-        )) as number;
-
-      console.log(
-        `✅ Token ${tokenId} rarity: ${rarity}`
-      );
-      return rarity;
-    } catch (error) {
-      console.error(
-        `❌ Failed to get rarity for token ${tokenId}:`,
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get rarity statistics
-   */
-  async getRarityStats(): Promise<
-    RarityStats[]
-  > {
-    try {
-      console.log(
-        "🔍 Getting rarity statistics..."
-      );
-
-      const rarityStats: RarityStats[] =
-        [];
-      const rarityNames = [
-        "Common",
-        "Uncommon",
-        "Rare",
-        "Epic",
-        "Legendary",
-      ];
-
-      for (
-        let rarity = 0;
-        rarity < 5;
-        rarity++
-      ) {
-        try {
-          const minted =
-            (await this.client.readContract(
-              {
-                address:
-                  this.contractAddress,
-                abi: NFT_ABI,
-                functionName:
-                  "rarityMintedCount",
-                args: [rarity],
-              }
-            )) as bigint;
-
-          const maxSupply =
-            (await this.client.readContract(
-              {
-                address:
-                  this.contractAddress,
-                abi: NFT_ABI,
-                functionName:
-                  "raritySupplyLimits",
-                args: [rarity],
-              }
-            )) as bigint;
-
-          const multiplier =
-            (await this.client.readContract(
-              {
-                address:
-                  this.contractAddress,
-                abi: NFT_ABI,
-                functionName:
-                  "rarityMultipliers",
-                args: [rarity],
-              }
-            )) as bigint;
-
-          rarityStats.push({
-            rarity,
-            name:
-              rarityNames[rarity] ||
-              `Rarity ${rarity}`,
-            minted: Number(minted),
-            maxSupply:
-              Number(maxSupply),
-            multiplier:
-              Number(multiplier),
-            remaining:
-              Number(maxSupply) -
-              Number(minted),
-          });
-        } catch (error) {
-          console.error(
-            `❌ Failed to get stats for rarity ${rarity}:`,
-            error
-          );
-        }
-      }
-
-      console.log(
-        `✅ Rarity stats: ${JSON.stringify(
-          rarityStats,
-          null,
-          2
-        )}`
-      );
-      return rarityStats;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get rarity stats:",
-        error
-      );
-      return [];
-    }
-  }
-
-  /**
-   * Get contract statistics
-   */
-  async getContractStats(): Promise<ContractStats> {
-    try {
-      console.log(
-        "📊 Getting contract statistics..."
-      );
-
-      const totalSupply =
-        await this.getTotalSupply();
-      const maxSupply =
-        await this.getMaxSupply();
-      const mintPrice =
-        await this.getMintPrice();
-
-      // Получаем статистику по редкостям
-      const rarityStats =
-        await this.getRarityStats();
-
-      const stats: ContractStats = {
-        totalSupply,
-        totalMinted: totalSupply,
-        lastMintBlock: undefined,
-        lastMintTimestamp: undefined,
-        maxSupply,
-        mintPrice,
-        rarityStats,
-      };
-
-      console.log(
-        `✅ Contract stats: ${JSON.stringify(
-          stats,
-          null,
-          2
-        )}`
-      );
-      return stats;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get contract stats:",
-        error
-      );
-      return {
-        totalSupply: 0,
-        totalMinted: 0,
-      };
-    }
-  }
-
-  /**
-   * Get all NFTMinted events
+   * Fetch all NFTMinted events from genesis to current block
    */
   async getAllMintEvents(): Promise<
-    NFTMintEvent[]
+    ContractEvent[]
   > {
     try {
-      console.log(
-        "📜 Getting all NFTMinted events..."
-      );
-
-      // Get events from the last 1000 blocks (adjust as needed)
       const currentBlock =
         await this.client.getBlockNumber();
-      const fromBlock =
-        currentBlock - BigInt(1000);
-
       const logs =
         await this.client.getLogs({
           address: this.contractAddress,
@@ -916,33 +286,26 @@ export class ContractListenerService {
               },
             ],
           },
-          fromBlock,
+          fromBlock: BigInt(0),
           toBlock: currentBlock,
         });
 
-      const events: NFTMintEvent[] =
-        logs.map((log) => ({
-          tokenId: Number(
-            log.args.tokenId
-          ),
-          to:
-            log.args.to || zeroAddress,
-          from: zeroAddress,
-          transactionHash:
-            log.transactionHash,
-          blockNumber: Number(
-            log.blockNumber
-          ),
-          timestamp: undefined, // Would need to get from block
-        }));
-
-      console.log(
-        `✅ Found ${events.length} NFTMinted events`
-      );
-      return events;
+      return logs.map((log) => ({
+        tokenId: Number(
+          log.args.tokenId
+        ),
+        to: log.args.to || zeroAddress,
+        from: zeroAddress,
+        transactionHash:
+          log.transactionHash,
+        blockNumber: Number(
+          log.blockNumber
+        ),
+        rarity: Number(log.args.rarity),
+      }));
     } catch (error) {
       console.error(
-        "❌ Failed to get NFTMinted events:",
+        "❌ Failed to fetch all NFTMinted events:",
         error
       );
       return [];
@@ -950,254 +313,101 @@ export class ContractListenerService {
   }
 
   /**
-   * Test contract connection
+   * Get current block number
    */
-  async testConnection(): Promise<boolean> {
-    try {
-      console.log(
-        "🔍 Testing contract connection..."
-      );
-
-      // Пробуем получить базовую информацию о контракте
-      const name =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "name",
-          }
-        )) as string;
-
-      const symbol =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "symbol",
-          }
-        )) as string;
-
-      console.log(
-        `✅ Contract connection test passed: ${name} (${symbol})`
-      );
-      return true;
-    } catch (error) {
-      console.error(
-        "❌ Contract connection failed:",
-        error
-      );
-      return false;
-    }
+  async getCurrentBlockNumber(): Promise<bigint> {
+    return this.client.getBlockNumber();
   }
 
   /**
-   * Get contract name
+   * Fetch NFTMinted events between block range [fromBlock, toBlock]
    */
-  async getContractName(): Promise<string> {
+  async getMintEventsInRange(
+    fromBlock: bigint,
+    toBlock?: bigint
+  ): Promise<ContractEvent[]> {
     try {
-      const name =
-        (await this.client.readContract(
-          {
+      const to =
+        toBlock ??
+        (await this.client.getBlockNumber());
+      const maxRange = BigInt(
+        Math.max(
+          1,
+          parseInt(
+            process.env
+              .MAX_LOG_RANGE_BLOCKS ||
+              "9000",
+            10
+          )
+        )
+      );
+      let cursor =
+        fromBlock < 0n ? 0n : fromBlock;
+      const end = to;
+      const result: ContractEvent[] =
+        [];
+
+      while (cursor <= end) {
+        const chunkEnd =
+          cursor + maxRange - 1n <= end
+            ? cursor + maxRange - 1n
+            : end;
+        const logs =
+          await this.client.getLogs({
             address:
               this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "name",
-          }
-        )) as string;
-      return name;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get contract name:",
-        error
-      );
-      return "Unknown";
-    }
-  }
+            event: {
+              type: "event",
+              name: "NFTMinted",
+              inputs: [
+                {
+                  type: "address",
+                  name: "to",
+                  indexed: true,
+                },
+                {
+                  type: "uint256",
+                  name: "tokenId",
+                  indexed: true,
+                },
+                {
+                  type: "uint8",
+                  name: "rarity",
+                  indexed: false,
+                },
+              ],
+            },
+            fromBlock: cursor,
+            toBlock: chunkEnd,
+          });
 
-  /**
-   * Get contract symbol
-   */
-  async getContractSymbol(): Promise<string> {
-    try {
-      const symbol =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "symbol",
-          }
-        )) as string;
-      return symbol;
-    } catch (error) {
-      console.error(
-        "❌ Failed to get contract symbol:",
-        error
-      );
-      return "UNKNOWN";
-    }
-  }
-
-  /**
-   * Get user balance
-   */
-  async getUserBalance(
-    userAddress: string
-  ): Promise<number> {
-    try {
-      console.log(
-        `🔍 Getting balance for ${userAddress}...`
-      );
-
-      const balance =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName: "balanceOf",
-            args: [
-              userAddress as Address,
-            ],
-          }
-        )) as bigint;
-
-      const userBalance =
-        Number(balance);
-      console.log(
-        `✅ User balance: ${userBalance}`
-      );
-      return userBalance;
-    } catch (error) {
-      console.error(
-        `❌ Failed to get balance for ${userAddress}:`,
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get token multiplier
-   */
-  async getTokenMultiplier(
-    tokenId: number
-  ): Promise<number> {
-    try {
-      console.log(
-        `🔍 Getting multiplier for token ${tokenId}...`
-      );
-
-      const multiplier =
-        (await this.client.readContract(
-          {
-            address:
-              this.contractAddress,
-            abi: NFT_ABI,
-            functionName:
-              "getTokenMultiplier",
-            args: [BigInt(tokenId)],
-          }
-        )) as bigint;
-
-      const tokenMultiplier =
-        Number(multiplier);
-      console.log(
-        `✅ Token ${tokenId} multiplier: ${tokenMultiplier}`
-      );
-      return tokenMultiplier;
-    } catch (error) {
-      console.error(
-        `❌ Failed to get multiplier for token ${tokenId}:`,
-        error
-      );
-      return 1;
-    }
-  }
-
-  /**
-   * Get block timestamp
-   */
-  async getBlockTimestamp(
-    blockNumber: number
-  ): Promise<number> {
-    try {
-      const block =
-        await this.client.getBlock({
-          blockNumber: BigInt(
-            blockNumber
-          ),
-        });
-      return Number(block.timestamp);
-    } catch (error) {
-      console.error(
-        `❌ Failed to get timestamp for block ${blockNumber}:`,
-        error
-      );
-      return 0;
-    }
-  }
-
-  /**
-   * Get user's tokens
-   */
-  async getUserTokens(
-    userAddress: string
-  ): Promise<number[]> {
-    try {
-      console.log(
-        `🔍 Getting tokens for user ${userAddress}...`
-      );
-
-      const balance =
-        await this.getUserBalance(
-          userAddress
-        );
-      const tokens: number[] = [];
-
-      for (
-        let i = 0;
-        i < balance;
-        i++
-      ) {
-        try {
-          const tokenId =
-            (await this.client.readContract(
-              {
-                address:
-                  this.contractAddress,
-                abi: NFT_ABI,
-                functionName:
-                  "tokenOfOwnerByIndex",
-                args: [
-                  userAddress as Address,
-                  BigInt(i),
-                ],
-              }
-            )) as bigint;
-
-          tokens.push(Number(tokenId));
-        } catch (error) {
-          console.error(
-            `❌ Failed to get token ${i} for user ${userAddress}:`,
-            error
-          );
+        for (const log of logs) {
+          result.push({
+            tokenId: Number(
+              log.args.tokenId
+            ),
+            to:
+              log.args.to ||
+              zeroAddress,
+            from: zeroAddress,
+            transactionHash:
+              log.transactionHash,
+            blockNumber: Number(
+              log.blockNumber
+            ),
+            rarity: Number(
+              log.args.rarity
+            ),
+          });
         }
+
+        cursor = chunkEnd + 1n;
       }
 
-      console.log(
-        `✅ User ${userAddress} has ${
-          tokens.length
-        } tokens: [${tokens.join(
-          ", "
-        )}]`
-      );
-      return tokens;
+      return result;
     } catch (error) {
       console.error(
-        `❌ Failed to get tokens for user ${userAddress}:`,
+        "❌ Failed to fetch NFTMinted events in range:",
         error
       );
       return [];
@@ -1205,53 +415,59 @@ export class ContractListenerService {
   }
 
   /**
-   * Get token details (owner, rarity, multiplier, URI)
+   * Read totalSupply() from ERC721Enumerable
    */
-  async getTokenDetails(
-    tokenId: number
-  ): Promise<{
-    owner: string;
-    rarity: number;
-    multiplier: number;
-    uri: string;
-  }> {
+  async getTotalSupply(): Promise<number> {
     try {
-      console.log(
-        `🔍 Getting details for token ${tokenId}...`
-      );
-
-      const [
-        owner,
-        rarity,
-        multiplier,
-        uri,
-      ] = await Promise.all([
-        this.getTokenOwner(tokenId),
-        this.getTokenRarity(tokenId),
-        this.getTokenMultiplier(
-          tokenId
-        ),
-        this.getTokenURI(tokenId),
+      const abi = parseAbi([
+        "function totalSupply() view returns (uint256)",
       ]);
-
-      const details = {
-        owner,
-        rarity,
-        multiplier,
-        uri,
-      };
-
-      console.log(
-        `✅ Token ${tokenId} details:`,
-        details
-      );
-      return details;
+      const totalSupply =
+        (await this.client.readContract(
+          {
+            address:
+              this.contractAddress,
+            abi,
+            functionName: "totalSupply",
+          }
+        )) as bigint;
+      return Number(totalSupply);
     } catch (error) {
       console.error(
-        `❌ Failed to get details for token ${tokenId}:`,
+        "❌ Failed to read totalSupply:",
         error
       );
-      throw error;
+      return 0;
+    }
+  }
+
+  /**
+   * Read rarity from public mapping tokenRarity(uint256) → uint8 (0..4)
+   */
+  async getTokenRarityByMapping(
+    tokenId: number
+  ): Promise<number | null> {
+    try {
+      const abi = parseAbi([
+        "function tokenRarity(uint256 tokenId) view returns (uint8)",
+      ]);
+      const rarity =
+        (await this.client.readContract(
+          {
+            address:
+              this.contractAddress,
+            abi,
+            functionName: "tokenRarity",
+            args: [BigInt(tokenId)],
+          }
+        )) as number;
+      return rarity;
+    } catch (error) {
+      console.error(
+        `❌ Failed to read tokenRarity for ${tokenId}:`,
+        error
+      );
+      return null;
     }
   }
 

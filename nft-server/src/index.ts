@@ -114,8 +114,6 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    stats:
-      jobManager?.getStats() || null,
   });
 });
 
@@ -211,97 +209,13 @@ app.get(
   }
 );
 
-/**
- * Get generation statistics
- */
-app.get("/stats", (req, res) => {
-  try {
-    const stats = jobManager.getStats();
-    res.json({ stats });
-  } catch (error) {
-    console.error(
-      "Error getting stats:",
-      error
-    );
-    res.status(500).json({
-      error: "Internal server error",
-    });
-  }
-});
+// Removed public stats endpoint to keep server minimal
 
-/**
- * Get contract statistics
- */
-app.get(
-  "/contract/stats",
-  async (req, res) => {
-    try {
-      const contractStats =
-        await contractListener.getContractStats();
-      res.json({ contractStats });
-    } catch (error) {
-      console.error(
-        "Error getting contract stats:",
-        error
-      );
-      res.status(500).json({
-        error: "Internal server error",
-      });
-    }
-  }
-);
+// Removed contract stats endpoint (obtain data directly from contract on frontend)
 
-/**
- * Get NFT statistics (rarity distribution, recent mints, etc.)
- */
-app.get(
-  "/nft/statistics",
-  async (req, res) => {
-    try {
-      const statistics =
-        contractListener.getStatistics();
+// Removed NFT statistics endpoint
 
-      if (!statistics) {
-        return res.status(404).json({
-          error:
-            "Statistics not available yet",
-        });
-      }
-
-      res.json({ statistics });
-    } catch (error) {
-      console.error(
-        "Error getting NFT statistics:",
-        error
-      );
-      res.status(500).json({
-        error: "Internal server error",
-      });
-    }
-  }
-);
-
-/**
- * Get total supply
- */
-app.get(
-  "/contract/supply",
-  async (req, res) => {
-    try {
-      const totalSupply =
-        await contractListener.getTotalSupply();
-      res.json({ totalSupply });
-    } catch (error) {
-      console.error(
-        "Error getting total supply:",
-        error
-      );
-      res.status(500).json({
-        error: "Internal server error",
-      });
-    }
-  }
-);
+// Removed contract supply endpoint
 
 /**
  * Manual job creation (for testing)
@@ -356,37 +270,7 @@ app.post(
   }
 );
 
-/**
- * Get past NFTMinted events (for catching up)
- */
-app.get(
-  "/events/past",
-  async (req, res) => {
-    try {
-      const fromBlock = req.query
-        .fromBlock
-        ? parseInt(
-            req.query
-              .fromBlock as string
-          )
-        : undefined;
-      const events =
-        await contractListener.getPastMintEvents(
-          fromBlock
-        );
-
-      res.json({ events });
-    } catch (error) {
-      console.error(
-        "Error getting past events:",
-        error
-      );
-      res.status(500).json({
-        error: "Internal server error",
-      });
-    }
-  }
-);
+// Removed past events endpoint
 
 // Cleanup job - run every hour
 setInterval(() => {
@@ -421,6 +305,9 @@ async function startServer() {
       process.exit(1);
     }
 
+    // Reconcile on startup to avoid missed generations
+    await reconcileExistingMints();
+
     // Start contract listener
     await startContractListener();
 
@@ -442,6 +329,139 @@ async function startServer() {
       error
     );
     process.exit(1);
+  }
+}
+// Reconcile already minted tokens: ensure assets exist in S3
+async function reconcileExistingMints() {
+  console.log(
+    "🔄 Reconciling existing mints with S3..."
+  );
+  try {
+    const mode = (
+      process.env.RECONCILE_MODE ||
+      "totalsupply"
+    ).toLowerCase();
+    let tokenIds: number[] = [];
+
+    if (mode === "totalsupply") {
+      const totalSupply =
+        await contractListener.getTotalSupply();
+      if (totalSupply <= 0) {
+        console.log(
+          "ℹ️ totalSupply is 0, nothing to reconcile"
+        );
+        return;
+      }
+      tokenIds = Array.from(
+        { length: totalSupply },
+        (_, i) => i + 1
+      );
+    } else {
+      // Determine block window for reconciliation
+      const hours = parseInt(
+        process.env.RECONCILE_HOURS ||
+          "168",
+        10
+      );
+      const currentBlock =
+        await contractListener.getCurrentBlockNumber();
+      const avgBlockTimeSec = parseInt(
+        process.env.BLOCK_TIME_SEC ||
+          "12",
+        10
+      );
+      const estimatedBlocks = Math.max(
+        1,
+        Math.floor(
+          (hours * 3600) /
+            avgBlockTimeSec
+        )
+      );
+      const fromBlock =
+        currentBlock -
+        BigInt(estimatedBlocks);
+      const events =
+        await contractListener.getMintEventsInRange(
+          fromBlock > 0n
+            ? fromBlock
+            : 0n,
+          currentBlock
+        );
+      tokenIds = [
+        ...new Set(
+          events.map((e) => e.tokenId)
+        ),
+      ];
+    }
+    if (!tokenIds.length) {
+      console.log(
+        "ℹ️ No past mints found"
+      );
+      return;
+    }
+
+    // Process sequentially to avoid high load
+    for (const tokenId of tokenIds) {
+      const existingJob =
+        jobManager.getJobByTokenId(
+          tokenId
+        );
+      if (
+        existingJob?.status ===
+        "completed"
+      )
+        continue;
+
+      // Lazy create a temp S3Service via jobManager internals
+      // We'll ask jobManager to create a job if needed
+      // Quick existence check will happen inside processJob pipeline after generation
+
+      // Skip if S3 already has both objects
+      // We reuse jobManager's s3Service via a helper call by creating a lightweight service here
+      // To keep boundaries, trigger a lightweight check by constructing S3Service
+      const { S3Service } =
+        await import("./services/s3");
+      const s3 = new S3Service();
+      const presence =
+        await s3.doesTokenAssetsExist(
+          tokenId
+        );
+      if (
+        presence.image &&
+        presence.metadata
+      ) {
+        continue;
+      }
+
+      let rarity: number | undefined =
+        undefined;
+      const contractRarity =
+        await contractListener.getTokenRarityByMapping(
+          tokenId
+        );
+      if (contractRarity !== null) {
+        rarity = contractRarity + 1; // enum 0..4 → levels 1..5
+      }
+      const job = jobManager.createJob({
+        tokenId,
+        to: "0x",
+        from: "0x",
+        transactionHash: "0x",
+        blockNumber: 0,
+        rarity,
+      });
+      // Process job asynchronously
+      processJobAsync(job.id);
+    }
+
+    console.log(
+      "✅ Reconciliation done"
+    );
+  } catch (error) {
+    console.error(
+      "❌ Reconciliation failed:",
+      error
+    );
   }
 }
 

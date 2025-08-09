@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import fs from "fs/promises";
 import path from "path";
@@ -101,7 +102,6 @@ export class S3Service {
         imagePath
       );
       const key = this.buildKey([
-        "images",
         `${tokenId}.png`,
       ]);
 
@@ -148,7 +148,6 @@ export class S3Service {
         )
       );
       const key = this.buildKey([
-        "metadata",
         `${tokenId}.json`,
       ]);
 
@@ -217,5 +216,43 @@ export class S3Service {
     }
 
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+  }
+
+  async doesTokenAssetsExist(
+    tokenId: number
+  ): Promise<{
+    image: boolean;
+    metadata: boolean;
+  }> {
+    const imageKey = this.buildKey([
+      `${tokenId}.png`,
+    ]);
+    const metadataKey = this.buildKey([
+      `${tokenId}.json`,
+    ]);
+    const [image, metadata] =
+      await Promise.all([
+        this.doesObjectExist(imageKey),
+        this.doesObjectExist(
+          metadataKey
+        ),
+      ]);
+    return { image, metadata };
+  }
+
+  async doesObjectExist(
+    key: string
+  ): Promise<boolean> {
+    try {
+      await this.s3.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        })
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

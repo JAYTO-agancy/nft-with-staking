@@ -52,12 +52,7 @@ export interface NFTStatistics {
   lastUpdated: number;
 }
 
-export interface PinataUploadResponse {
-  IpfsHash: string;
-  PinSize: number;
-  Timestamp: string;
-  isDuplicate?: boolean;
-}
+// Pinata-specific types removed
 
 export const RARITY_NAMES = {
   1: "Common",

@@ -31,9 +31,14 @@ export class JobManagerService {
       id: uuidv4(),
       tokenId: event.tokenId,
       userAddress: event.to,
-      rarityLevel: this.determineRarity(
-        event.tokenId
-      ),
+      rarityLevel:
+        event.rarity &&
+        event.rarity >= 1 &&
+        event.rarity <= 5
+          ? (event.rarity as RarityLevel)
+          : this.determineRarity(
+              event.tokenId
+            ),
       status: "pending",
       createdAt: new Date(),
     };
