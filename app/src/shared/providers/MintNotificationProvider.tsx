@@ -7,6 +7,7 @@ import {
   useEffect,
   ReactNode,
   useMemo,
+  useRef,
 } from "react";
 import {
   useAccount,
@@ -17,6 +18,11 @@ import { createPublicClient, webSocket, decodeEventLog } from "viem";
 import { sepolia } from "viem/chains";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
+import {
+  getImageUrl,
+  checkS3ImageAvailable,
+  waitForS3ImageAvailable,
+} from "@/shared/lib/nftAvailability";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +67,8 @@ export function MintNotificationProvider({ children }: Props) {
   const [watchingTxHash, setWatchingTxHash] = useState<`0x${string}` | null>(
     null,
   );
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const processedTx = useRef<Set<string>>(new Set());
 
   // Wait for transaction receipt
   const { data: receipt, isSuccess: txSuccess } = useWaitForTransactionReceipt({
@@ -80,46 +88,26 @@ export function MintNotificationProvider({ children }: Props) {
     }
   }, []);
 
-  // Function to check if NFT image is available on S3
-  const checkImageAvailability = async (tokenId: number): Promise<boolean> => {
-    try {
-      const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
-      console.log(
-        "🎯 MintNotification: Checking S3 availability for:",
-        imageUrl,
-      );
-      const response = await fetch(imageUrl, { method: "HEAD" });
-      console.log(
-        "🎯 MintNotification: S3 response status:",
-        response.status,
-        response.ok,
-      );
-      return response.ok;
-    } catch (error) {
-      console.log("🎯 MintNotification: S3 check error:", error);
-      return false;
-    }
-  };
+  // Function to check if NFT image is available on S3 (shared util)
+  const checkImageAvailability = async (tokenId: number): Promise<boolean> =>
+    checkS3ImageAvailable(tokenId);
 
   // Function to wait for S3 image with retries
-  const waitForS3Image = async (
-    tokenId: number,
-    maxAttempts = 10,
-  ): Promise<boolean> => {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const isAvailable = await checkImageAvailability(tokenId);
-      if (isAvailable) {
-        return true;
-      }
-      // Wait with exponential backoff: 2s, 4s, 8s, 16s, then 30s
-      const delay = attempt <= 4 ? Math.pow(2, attempt) * 1000 : 30000;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    return false;
+  const waitForS3Image = async (tokenId: number): Promise<boolean> => {
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    return waitForS3ImageAvailable(tokenId, {
+      maxAttempts: 6,
+      baseMs: 1500,
+      maxMs: 8000,
+      signal: abortController.signal,
+    });
   };
 
   // Listen for NFTMinted events for current user
   useEffect(() => {
+    // Stop listening once modal is shown to avoid repeated openings
+    if (mintedNft) return;
     if (!address || !watchingTxHash) {
       console.log(
         "🎯 MintNotification: Not watching - address:",
@@ -180,7 +168,8 @@ export function MintNotificationProvider({ children }: Props) {
           // Filter to current user's mint and matching txHash
           if (
             to?.toLowerCase() === address.toLowerCase() &&
-            logTxHash?.toLowerCase() === watchingTxHash?.toLowerCase()
+            logTxHash?.toLowerCase() === watchingTxHash?.toLowerCase() &&
+            !processedTx.current.has(logTxHash.toLowerCase())
           ) {
             console.log(
               "🎯 MintNotification: Match found! Processing tokenId:",
@@ -203,18 +192,18 @@ export function MintNotificationProvider({ children }: Props) {
             const imageAvailable = await waitForS3Image(tokenId);
 
             if (imageAvailable) {
-              const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+              const imageUrl = getImageUrl(tokenId);
               console.log(
                 "🎯 MintNotification: S3 image available, showing modal for tokenId:",
                 tokenId,
               );
-              setMintedNft({
-                tokenId,
-                imageUrl,
-                rarity,
-                txHash: logTxHash,
-              });
-              setWatchingTxHash(null); // Stop watching after successful detection
+              setMintedNft((prev) =>
+                prev?.txHash?.toLowerCase() === logTxHash.toLowerCase()
+                  ? prev
+                  : { tokenId, imageUrl, rarity, txHash: logTxHash },
+              );
+              processedTx.current.add(logTxHash.toLowerCase());
+              setWatchingTxHash(null);
             } else {
               console.log(
                 "🎯 MintNotification: S3 image not available after waiting for tokenId:",
@@ -232,10 +221,11 @@ export function MintNotificationProvider({ children }: Props) {
         unwatch?.();
       } catch {}
     };
-  }, [address, watchingTxHash, wsClient, publicClient]);
+  }, [address, watchingTxHash, wsClient, publicClient, mintedNft]);
 
   // Alternative approach: Parse transaction receipt logs when transaction is confirmed
   useEffect(() => {
+    if (mintedNft) return;
     if (!txSuccess || !receipt || !address || !watchingTxHash) return;
 
     console.log(
@@ -295,7 +285,10 @@ export function MintNotificationProvider({ children }: Props) {
             tokenId,
           );
 
-          if (to?.toLowerCase() === address.toLowerCase()) {
+          if (
+            to?.toLowerCase() === address.toLowerCase() &&
+            !processedTx.current.has((watchingTxHash as string).toLowerCase())
+          ) {
             console.log(
               "🎯 MintNotification: Match found! Processing tokenId from receipt:",
               tokenId,
@@ -319,17 +312,25 @@ export function MintNotificationProvider({ children }: Props) {
               const imageAvailable = await waitForS3Image(tokenId);
 
               if (imageAvailable) {
-                const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+                const imageUrl = getImageUrl(tokenId);
                 console.log(
                   "🎯 MintNotification: S3 image available, showing modal for tokenId (from receipt):",
                   tokenId,
                 );
-                setMintedNft({
-                  tokenId,
-                  imageUrl,
-                  rarity,
-                  txHash: watchingTxHash,
-                });
+                setMintedNft((prev) =>
+                  prev?.txHash?.toLowerCase() ===
+                  (watchingTxHash as string).toLowerCase()
+                    ? prev
+                    : {
+                        tokenId,
+                        imageUrl,
+                        rarity,
+                        txHash: watchingTxHash!,
+                      },
+                );
+                processedTx.current.add(
+                  (watchingTxHash as string).toLowerCase(),
+                );
                 setWatchingTxHash(null);
               } else {
                 console.log(
@@ -347,7 +348,7 @@ export function MintNotificationProvider({ children }: Props) {
         console.log("🎯 MintNotification: Error decoding log:", error);
       }
     }
-  }, [txSuccess, receipt, address, watchingTxHash, publicClient]);
+  }, [txSuccess, receipt, address, watchingTxHash, publicClient, mintedNft]);
 
   const showMintNotification = (txHash: `0x${string}`) => {
     console.log("🎯 MintNotification: Starting to watch txHash:", txHash);
@@ -355,9 +356,28 @@ export function MintNotificationProvider({ children }: Props) {
   };
 
   const hideMintNotification = () => {
+    console.log(
+      "🎯 MintNotification: Hiding notification and aborting S3 checks",
+    );
+
+    // Abort any ongoing S3 checks
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     setMintedNft(null);
     setWatchingTxHash(null);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const contextValue = {
     showMintNotification,

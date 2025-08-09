@@ -16,6 +16,11 @@ import {
 } from "framer-motion";
 import { useRef } from "react";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
+import {
+  checkS3ImageAvailable,
+  waitForS3ImageAvailable,
+  getImageUrl,
+} from "@/shared/lib/nftAvailability";
 import { NFTCard } from "@/shared/components/NFTCard";
 
 const rarityConfig: Record<
@@ -249,7 +254,7 @@ export function LastMintedSection() {
           const next = [...prev];
           for (const log of logs) {
             const tokenId = Number(log.args?.tokenId ?? 0);
-            const imageUrl = `${BASE_URL_NFT}/${tokenId}.png`;
+            const imageUrl = getImageUrl(tokenId);
             const rarityIdx = Number(log.args?.rarity ?? 0);
             const RARITY_NAMES = [
               "Common",
@@ -259,10 +264,26 @@ export function LastMintedSection() {
               "Legendary",
             ];
             const rarity = RARITY_NAMES[rarityIdx] ?? "";
-            // Prepend unique token
+            // Only show when image is available on S3 to avoid broken image placeholders
             if (!next.find((x) => x.id === tokenId)) {
-              next.unshift({ id: tokenId, imageUrl, rarity });
-              if (next.length > 5) next.pop();
+              // Try short bounded wait (no infinite loops)
+              waitForS3ImageAvailable(tokenId, {
+                maxAttempts: 5,
+                baseMs: 1000,
+                maxMs: 4000,
+              })
+                .then((ok) => {
+                  if (!ok) return;
+                  setNfts((prev2) => {
+                    const p = [...prev2];
+                    if (!p.find((x) => x.id === tokenId)) {
+                      p.unshift({ id: tokenId, imageUrl, rarity });
+                      if (p.length > 5) p.pop();
+                    }
+                    return p;
+                  });
+                })
+                .catch(() => {});
             }
           }
           return next;
