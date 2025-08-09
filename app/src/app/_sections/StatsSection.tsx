@@ -199,6 +199,7 @@ export function StatsSection() {
 
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [isMounted, setIsMounted] = useState(false);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -217,6 +218,10 @@ export function StatsSection() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -272,29 +277,30 @@ export function StatsSection() {
         <div className="absolute top-32 left-1/4 h-96 w-96 rounded-full bg-gradient-to-r from-green-500/10 to-blue-500/10 blur-3xl" />
         <div className="absolute right-1/4 bottom-32 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl" />
 
-        {/* Data visualization particles */}
-        {Array.from({ length: 40 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.1, 0.6, 0.1],
-              scale: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: Math.random() * 4 + 3,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          >
-            <div className="h-1 w-1 rounded-full bg-gradient-to-r from-blue-400/50 to-purple-400/50" />
-          </motion.div>
-        ))}
+        {/* Data visualization particles (client-only) */}
+        {isMounted &&
+          Array.from({ length: 40 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -30, 0],
+                opacity: [0.1, 0.6, 0.1],
+                scale: [0.5, 1, 0.5],
+              }}
+              transition={{
+                duration: Math.random() * 4 + 3,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            >
+              <div className="h-1 w-1 rounded-full bg-gradient-to-r from-blue-400/50 to-purple-400/50" />
+            </motion.div>
+          ))}
       </div>
 
       {/* Mouse follower effect */}

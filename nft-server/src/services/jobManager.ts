@@ -31,14 +31,7 @@ export class JobManagerService {
       id: uuidv4(),
       tokenId: event.tokenId,
       userAddress: event.to,
-      rarityLevel:
-        event.rarity &&
-        event.rarity >= 1 &&
-        event.rarity <= 5
-          ? (event.rarity as RarityLevel)
-          : this.determineRarity(
-              event.tokenId
-            ),
+      rarityLevel: event.rarity || 0,
       status: "pending",
       createdAt: new Date(),
     };
@@ -207,24 +200,6 @@ export class JobManagerService {
         `📊 Job ${jobId} status updated: ${status}`
       );
     }
-  }
-
-  /**
-   * Determine rarity based on token ID
-   * This is a simple implementation - you might want to make it more sophisticated
-   */
-  private determineRarity(
-    tokenId: number
-  ): RarityLevel {
-    // Simple rarity determination based on probability
-    // You can implement more complex logic here
-    const random = Math.random();
-
-    if (random < 0.5) return 1; // 50% Common
-    if (random < 0.75) return 2; // 25% Uncommon
-    if (random < 0.9) return 3; // 15% Rare
-    if (random < 0.98) return 4; // 8% Epic
-    return 5; // 2% Legendary
   }
 
   /**

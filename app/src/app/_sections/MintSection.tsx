@@ -30,6 +30,7 @@ export function MintSection({
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [isHovered, setIsHovered] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -48,6 +49,10 @@ export function MintSection({
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const rarityConfig: Record<
     string,
@@ -169,29 +174,30 @@ export function MintSection({
         <div className="absolute top-32 left-1/3 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl" />
         <div className="absolute right-1/3 bottom-32 h-96 w-96 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl" />
 
-        {/* Mint particles */}
-        {Array.from({ length: 50 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -50, 0],
-              opacity: [0.1, 0.8, 0.1],
-              scale: [0.5, 1.5, 0.5],
-            }}
-            transition={{
-              duration: Math.random() * 6 + 4,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-            }}
-          >
-            <div className="h-1 w-1 rounded-full bg-gradient-to-r from-purple-400/30 to-pink-400/30" />
-          </motion.div>
-        ))}
+        {/* Mint particles (client-only) */}
+        {isMounted &&
+          Array.from({ length: 50 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -50, 0],
+                opacity: [0.1, 0.8, 0.1],
+                scale: [0.5, 1.5, 0.5],
+              }}
+              transition={{
+                duration: Math.random() * 6 + 4,
+                repeat: Infinity,
+                delay: Math.random() * 3,
+              }}
+            >
+              <div className="h-1 w-1 rounded-full bg-gradient-to-r from-purple-400/30 to-pink-400/30" />
+            </motion.div>
+          ))}
       </div>
 
       {/* Mouse follower effect */}
@@ -573,30 +579,31 @@ export function MintSection({
                       )}
 
                       {/* Confetti particles */}
-                      {Array.from({ length: 20 }).map((_, i) => (
-                        <motion.div
-                          key={i}
-                          className={`absolute h-2 w-2 rounded-full bg-gradient-to-r ${
-                            rarityConfig[mintedNft.rarity]?.particles ||
-                            rarityConfig.Common.particles
-                          }`}
-                          style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                          }}
-                          animate={{
-                            y: [0, -50, 0],
-                            x: [0, Math.random() * 40 - 20, 0],
-                            opacity: [0, 1, 0],
-                            scale: [0, 1, 0],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            delay: Math.random() * 2,
-                          }}
-                        />
-                      ))}
+                      {isMounted &&
+                        Array.from({ length: 20 }).map((_, i) => (
+                          <motion.div
+                            key={i}
+                            className={`absolute h-2 w-2 rounded-full bg-gradient-to-r ${
+                              rarityConfig[mintedNft.rarity]?.particles ||
+                              rarityConfig.Common.particles
+                            }`}
+                            style={{
+                              left: `${Math.random() * 100}%`,
+                              top: `${Math.random() * 100}%`,
+                            }}
+                            animate={{
+                              y: [0, -50, 0],
+                              x: [0, Math.random() * 40 - 20, 0],
+                              opacity: [0, 1, 0],
+                              scale: [0, 1, 0],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              delay: Math.random() * 2,
+                            }}
+                          />
+                        ))}
                     </div>
 
                     {/* NFT Info */}

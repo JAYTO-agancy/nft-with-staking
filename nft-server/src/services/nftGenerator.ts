@@ -139,7 +139,7 @@ export class NFTGeneratorService {
   getRarityName(
     level: number
   ): RarityName {
-    if (level < 1 || level > 5) {
+    if (level < 0 || level > 4) {
       throw new Error(
         `Invalid rarity level: ${level}`
       );

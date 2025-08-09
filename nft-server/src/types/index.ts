@@ -55,11 +55,11 @@ export interface NFTStatistics {
 // Pinata-specific types removed
 
 export const RARITY_NAMES = {
-  1: "Common",
-  2: "Uncommon",
-  3: "Rare",
-  4: "Epic",
-  5: "Legendary",
+  0: "Common",
+  1: "Uncommon",
+  2: "Rare",
+  3: "Epic",
+  4: "Legendary",
 } as const;
 
 export type RarityLevel =

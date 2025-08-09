@@ -66,6 +66,7 @@ export function HowBuySection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -84,6 +85,10 @@ export function HowBuySection() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -160,22 +165,23 @@ export function HowBuySection() {
         <div className="absolute top-20 left-1/4 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl" />
         <div className="absolute right-1/4 bottom-20 h-96 w-96 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl" />
 
-        {/* Floating geometric shapes */}
-        {Array.from({ length: 20 }).map((_, i) => (
-          <motion.div
-            key={i}
-            variants={floatingElementVariants}
-            animate="animate"
-            className="absolute"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 4}s`,
-            }}
-          >
-            <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-400/30 to-pink-400/30" />
-          </motion.div>
-        ))}
+        {/* Floating geometric shapes (client-only) */}
+        {isMounted &&
+          Array.from({ length: 20 }).map((_, i) => (
+            <motion.div
+              key={i}
+              variants={floatingElementVariants}
+              animate="animate"
+              className="absolute"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 4}s`,
+              }}
+            >
+              <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-400/30 to-pink-400/30" />
+            </motion.div>
+          ))}
       </div>
 
       {/* Mouse follower light */}

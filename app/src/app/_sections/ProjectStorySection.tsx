@@ -113,6 +113,7 @@ export function ProjectStorySection() {
   const [hoveredTeamMember, setHoveredTeamMember] = useState<number | null>(
     null,
   );
+  const [isMounted, setIsMounted] = useState(false);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -131,6 +132,10 @@ export function ProjectStorySection() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -199,29 +204,30 @@ export function ProjectStorySection() {
         <div className="absolute right-1/5 bottom-20 h-96 w-96 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl" />
         <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-green-500/10 to-yellow-500/10 blur-3xl" />
 
-        {/* Story particles */}
-        {Array.from({ length: 60 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -40, 0],
-              opacity: [0.1, 0.8, 0.1],
-              scale: [0.3, 1.2, 0.3],
-            }}
-            transition={{
-              duration: Math.random() * 5 + 4,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-            }}
-          >
-            <div className="h-1 w-1 rounded-full bg-gradient-to-r from-purple-400/40 to-pink-400/40" />
-          </motion.div>
-        ))}
+        {/* Story particles (client-only) */}
+        {isMounted &&
+          Array.from({ length: 60 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -40, 0],
+                opacity: [0.1, 0.8, 0.1],
+                scale: [0.3, 1.2, 0.3],
+              }}
+              transition={{
+                duration: Math.random() * 5 + 4,
+                repeat: Infinity,
+                delay: Math.random() * 3,
+              }}
+            >
+              <div className="h-1 w-1 rounded-full bg-gradient-to-r from-purple-400/40 to-pink-400/40" />
+            </motion.div>
+          ))}
       </div>
 
       {/* Mouse follower light */}
@@ -386,7 +392,8 @@ export function ProjectStorySection() {
                       </motion.p>
 
                       {/* Floating particles inside card */}
-                      {isHovered &&
+                      {isMounted &&
+                        isHovered &&
                         Array.from({ length: 5 }).map((_, i) => (
                           <motion.div
                             key={i}

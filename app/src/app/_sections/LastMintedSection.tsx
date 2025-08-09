@@ -121,6 +121,7 @@ export function LastMintedSection() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [hoveredNft, setHoveredNft] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const publicClient = usePublicClient();
 
   const ref = useRef(null);
@@ -143,6 +144,10 @@ export function LastMintedSection() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     async function fetchLastMinted() {
@@ -268,27 +273,28 @@ export function LastMintedSection() {
         <div className="absolute top-40 left-1/3 h-96 w-96 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-3xl" />
         <div className="absolute right-1/3 bottom-40 h-96 w-96 rounded-full bg-gradient-to-r from-pink-500/10 to-cyan-500/10 blur-3xl" />
 
-        {/* Floating particles */}
-        {Array.from({ length: 30 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute h-1 w-1 rounded-full bg-white/20"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -50, 0],
-              opacity: [0, 1, 0],
-              scale: [0, 1, 0],
-            }}
-            transition={{
-              duration: Math.random() * 4 + 3,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
+        {/* Floating particles (client-only to avoid SSR mismatch) */}
+        {isMounted &&
+          Array.from({ length: 30 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute h-1 w-1 rounded-full bg-white/20"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -50, 0],
+                opacity: [0, 1, 0],
+                scale: [0, 1, 0],
+              }}
+              transition={{
+                duration: Math.random() * 4 + 3,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
       </div>
 
       {/* Mouse follower light */}
