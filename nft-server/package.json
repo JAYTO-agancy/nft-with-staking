@@ -1,7 +1,7 @@
 {
-  "name": "nft-listener-server",
+  "name": "nft-server",
   "version": "1.0.0",
-  "description": "NFT generation listener server",
+  "description": "NFT generation server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
