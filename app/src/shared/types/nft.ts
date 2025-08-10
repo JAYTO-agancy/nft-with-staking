@@ -89,13 +89,14 @@ export const RARITY_COLORS: Record<
 
 // Интерфейсы для компонентов
 export interface NFTCardProps {
-  tokenId: number;
-  imageUrl?: string;
-  name?: string;
-  rarity?: RarityTier;
-  isStaked?: boolean;
+  id?: number;
+  tokenId?: number; // New: if provided, will fetch imageUrl and rarity automatically
+  imageUrl?: string; // Optional now
+  rarity?: string;
   className?: string;
+  showNewBadge?: boolean;
   compact?: boolean;
+  disableLink?: boolean; // New: disable navigation functionality
 }
 
 export interface NFTGalleryItem {

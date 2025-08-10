@@ -40,7 +40,7 @@ function AnimatedCounter({
     if (!isInView) return;
 
     const timer = setTimeout(() => {
-      let start = 0;
+      const start = 0;
       const startTime = Date.now();
       const updateCounter = () => {
         const elapsed = Date.now() - startTime;

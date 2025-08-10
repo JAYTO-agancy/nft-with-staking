@@ -1,11 +1,10 @@
 "use client";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { createPublicClient, webSocket } from "viem";
 import { sepolia } from "viem/chains";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
-import { Sparkles, Clock, ExternalLink } from "lucide-react";
+import { Sparkles, Clock } from "lucide-react";
 import {
   motion,
   useInView,
@@ -17,64 +16,10 @@ import {
 import { useRef } from "react";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
 import {
-  checkS3ImageAvailable,
-  waitForS3ImageAvailable,
   getImageUrl,
+  waitForS3ImageAvailable,
 } from "@/shared/lib/nftAvailability";
 import { NFTCard } from "@/shared/components/NFTCard";
-
-const rarityConfig: Record<
-  string,
-  {
-    color: string;
-    bgColor: string;
-    badge: string;
-    glow: string;
-    hologram: string;
-    particles: string;
-  }
-> = {
-  Legendary: {
-    color: "border-yellow-400/50 shadow-yellow-400/30",
-    bgColor: "from-yellow-900/30 via-orange-900/20 to-yellow-800/30",
-    badge: "from-yellow-400 via-orange-500 to-yellow-600",
-    glow: "shadow-yellow-500/50",
-    hologram: "from-yellow-400/20 via-orange-400/10 to-yellow-400/20",
-    particles: "from-yellow-400 to-orange-500",
-  },
-  Epic: {
-    color: "border-purple-400/50 shadow-purple-400/30",
-    bgColor: "from-purple-900/30 via-pink-900/20 to-purple-800/30",
-    badge: "from-purple-500 via-pink-600 to-purple-700",
-    glow: "shadow-purple-500/50",
-    hologram: "from-purple-400/20 via-pink-400/10 to-purple-400/20",
-    particles: "from-purple-400 to-pink-500",
-  },
-  Rare: {
-    color: "border-blue-400/50 shadow-blue-400/30",
-    bgColor: "from-blue-900/30 via-cyan-900/20 to-blue-800/30",
-    badge: "from-blue-500 via-cyan-600 to-blue-700",
-    glow: "shadow-blue-500/50",
-    hologram: "from-blue-400/20 via-cyan-400/10 to-blue-400/20",
-    particles: "from-blue-400 to-cyan-500",
-  },
-  Uncommon: {
-    color: "border-green-400/50 shadow-green-400/30",
-    bgColor: "from-green-900/30 via-emerald-900/20 to-green-800/30",
-    badge: "from-green-500 via-emerald-600 to-green-700",
-    glow: "shadow-green-500/50",
-    hologram: "from-green-400/20 via-emerald-400/10 to-green-400/20",
-    particles: "from-green-400 to-emerald-500",
-  },
-  Common: {
-    color: "border-gray-400/50 shadow-gray-400/30",
-    bgColor: "from-gray-900/30 via-slate-900/20 to-gray-800/30",
-    badge: "from-gray-500 via-slate-600 to-gray-700",
-    glow: "shadow-gray-500/50",
-    hologram: "from-gray-400/20 via-slate-400/10 to-gray-400/20",
-    particles: "from-gray-400 to-slate-500",
-  },
-};
 
 function NFTSkeleton({ index }: { index: number }) {
   return (

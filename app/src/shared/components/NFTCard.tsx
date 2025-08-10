@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Star, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePublicClient } from "wagmi";
+import { useRouter } from "next/navigation";
 import { StakableNFTAbi } from "@/shared/lib/abis/StakabeNFT.abi";
 import { CONTRACTS_ADDRESS, BASE_URL_NFT } from "@/shared/lib/constants";
 
@@ -70,6 +71,7 @@ type NFTCardProps = {
   className?: string;
   showNewBadge?: boolean;
   compact?: boolean;
+  disableLink?: boolean; // New: disable navigation functionality
 };
 
 export function NFTCard({
@@ -80,15 +82,23 @@ export function NFTCard({
   className,
   showNewBadge = false,
   compact = false,
+  disableLink = false,
 }: NFTCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imageUrl, setImageUrl] = useState(providedImageUrl || "");
   const [rarity, setRarity] = useState(providedRarity);
   const [loading, setLoading] = useState(false);
   const publicClient = usePublicClient();
+  const router = useRouter();
 
   const finalTokenId = tokenId ?? id;
   const config = rarityConfig[rarity] || rarityConfig.Common;
+
+  const handleCardClick = () => {
+    if (!disableLink && finalTokenId) {
+      router.push(`/nft/${finalTokenId}`);
+    }
+  };
 
   // Fetch NFT data if tokenId is provided but imageUrl/rarity are not
   useEffect(() => {
@@ -152,8 +162,10 @@ export function NFTCard({
       <div
         className={cn(
           "rounded-2xl border border-white/10 bg-white/5 p-3",
+          !disableLink && "cursor-pointer transition-colors hover:bg-white/10",
           className,
         )}
+        onClick={handleCardClick}
       >
         <div className="relative aspect-square overflow-hidden rounded-xl">
           {loading ? (
@@ -196,9 +208,14 @@ export function NFTCard({
 
   return (
     <motion.div
-      className={cn("group relative", className)}
+      className={cn(
+        "group relative",
+        !disableLink && "cursor-pointer",
+        className,
+      )}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
+      onClick={handleCardClick}
       style={{ perspective: "1000px" }}
     >
       {/* Holographic glow */}
