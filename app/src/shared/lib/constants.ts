@@ -1,7 +1,7 @@
 export const CONTRACTS_ADDRESS = {
-  StakableNFT: "0x378fead11a0b2b8859a14ec28444e796e6af890a" as `0x${string}`,
-  RewardToken: "0xa293bd9dfe32c5389cea73c0efdd6b1c3163fea6" as `0x${string}`,
-  NFTStaking: "0x51402c4bfd5c700de666d8e23b4f5d836b309854" as `0x${string}`,
+  StakableNFT: process.env.NEXT_PUBLIC_CONTRACT_STAKABLE_NFT as `0x${string}`,
+  NFTStaking: process.env.NEXT_PUBLIC_CONTRACT_NFT_STAKING as `0x${string}`,
+  RewardToken: process.env.NEXT_PUBLIC_CONTRACT_REWARD_TOKEN as `0x${string}`,
 };
 
 export const BASE_URL_NFT =

@@ -32,15 +32,6 @@ export interface ContractStats {
   rarityStats?: RarityStats[];
 }
 
-// Contract addresses (можно вынести в env)
-export const CONTRACT_ADDRESSES = {
-  NFT: "0x0000000000000000000000000000000000000000",
-  REWARD_TOKEN:
-    "0x0000000000000000000000000000000000000000",
-  STAKING:
-    "0x0000000000000000000000000000000000000000",
-} as const;
-
 // Helper function to get contract events
 export const getContractEvents = (
   abi: any[],

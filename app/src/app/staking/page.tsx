@@ -625,7 +625,7 @@ export default function StakingPage() {
                             className="w-full justify-center border-blue-500/20 bg-gradient-to-r from-blue-600/20 to-blue-700/20 text-blue-300"
                           >
                             <Coins className="mr-1 h-3 w-3" />
-                            {(Number(t.pending || 0n) / 1e18).toFixed(4)} RWD
+                            {(Number(t.pending || 0n) / 1e18).toFixed(4)} $PFC
                           </Badge>
 
                           <Button
