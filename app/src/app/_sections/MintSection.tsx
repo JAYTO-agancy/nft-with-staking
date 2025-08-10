@@ -287,7 +287,7 @@ export function MintSection({ onMint }: { onMint: () => void }) {
                   }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
-                  0.01 ETH
+                  {process.env.NEXT_PUBLIC_MINT_PRICE}
                 </motion.div>
                 <motion.div
                   className="text-sm text-gray-400"

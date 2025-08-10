@@ -34,7 +34,7 @@ const steps = [
     icon: Code,
     title: "Smart Contract",
     description:
-      "Our AI-powered smart contracts ensure fair distribution and authentic rarity generation.",
+      "Our smart contracts ensure fair distribution and authentic rarity generation.",
     color: "from-purple-500 via-pink-500 to-rose-500",
     bgGradient: "from-purple-900/20 via-pink-900/20 to-rose-900/20",
     glowColor: "shadow-purple-500/20",
@@ -367,17 +367,6 @@ export function HowBuySection() {
                         >
                           {step.description}
                         </motion.p>
-
-                        {/* Arrow indicator */}
-                        <motion.div
-                          className="mt-6 flex items-center gap-2 text-white/60"
-                          initial={{ opacity: 0, x: -10 }}
-                          whileHover={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <span className="text-sm">Learn more</span>
-                          <ArrowRight className="h-4 w-4" />
-                        </motion.div>
                       </div>
 
                       {/* Floating elements inside card */}

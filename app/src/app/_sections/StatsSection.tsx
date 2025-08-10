@@ -431,9 +431,8 @@ export function StatsSection() {
               className="mx-auto max-w-3xl text-lg text-gray-400 md:text-xl"
               variants={headerVariants}
             >
-              Real-time analytics and distribution data from the Plumffel
-              universe. Witness the growth and rarity distribution of our
-              legendary collection.
+              Real-time analytics data from the Plumffel smart contract. Witness
+              the growth and rarity distribution of our legendary collection.
             </motion.p>
 
             {error && (

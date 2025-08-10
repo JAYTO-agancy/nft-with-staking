@@ -193,9 +193,9 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
 
               <p className="max-w-2xl text-base leading-relaxed text-gray-400 sm:text-lg md:text-xl lg:max-w-xl">
                 Experience the next generation of NFTs. Each Plumffel is a
-                unique digital companion, crafted with cutting-edge AI and
-                blockchain technology. Stake, earn, and be part of the most
-                adorable revolution in Web3.
+                unique digital companion, crafted with blockchain technology.
+                Stake, earn, and be part of the most adorable revolution in
+                Web3.
               </p>
             </motion.div>
 
