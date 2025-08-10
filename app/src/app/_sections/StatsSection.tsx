@@ -296,7 +296,7 @@ export function StatsSection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-32"
+      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-12 sm:py-32"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0">
@@ -338,7 +338,7 @@ export function StatsSection() {
         }}
       />
 
-      <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-20 container mx-auto px-2 sm:px-6 lg:px-8">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -599,7 +599,7 @@ export function StatsSection() {
           {/* Rarity Distribution */}
           <motion.div
             variants={cardVariants}
-            className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/50 to-black/50 p-8 backdrop-blur-xl md:p-12"
+            className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/50 to-black/50 p-2 backdrop-blur-xl sm:p-8 md:p-12"
           >
             {/* Background decoration */}
             <div className="absolute top-0 right-0 h-64 w-64 rounded-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 blur-3xl" />

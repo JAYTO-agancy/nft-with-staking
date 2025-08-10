@@ -176,7 +176,7 @@ export function ProjectStorySection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-32"
+      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-12 sm:py-32"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0">
