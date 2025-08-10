@@ -1,5 +1,6 @@
+import { SOCIAL_LINKS } from "@/shared/lib/constants";
 import { cn } from "@/shared/lib/css";
-import { Twitter, Send } from "lucide-react";
+import { XIcon, SendIcon } from "lucide-react";
 
 export const Footer: React.FC<{ className?: string }> = ({ className }) => {
   return (
@@ -20,22 +21,22 @@ export const Footer: React.FC<{ className?: string }> = ({ className }) => {
         </div>
         <div className="flex gap-4">
           <a
-            href="https://x.com/yourproject"
+            href={SOCIAL_LINKS.telegram}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Twitter"
             className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10"
           >
-            <Twitter className="h-6 w-6" />
+            <XIcon className="h-6 w-6" />
           </a>
           <a
-            href="https://t.me/yourproject"
+            href={SOCIAL_LINKS.twitter}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Telegram"
             className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10"
           >
-            <Send className="h-6 w-6" />
+            <SendIcon className="h-6 w-6" />
           </a>
         </div>
       </div>

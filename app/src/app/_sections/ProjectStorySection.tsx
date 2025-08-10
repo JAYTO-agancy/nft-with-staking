@@ -20,6 +20,8 @@ import {
 } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
+import { Button } from "@/shared/ui/kit/button";
+import { SOCIAL_LINKS } from "@/shared/lib/constants";
 
 const missions = [
   {
@@ -575,40 +577,17 @@ export function ProjectStorySection() {
               </motion.p>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
-                <motion.button
-                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-12 py-4 font-semibold text-white shadow-2xl"
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <motion.span
-                    className="relative z-10 flex items-center justify-center gap-2"
-                    whileHover={{ x: 5 }}
-                  >
-                    Start Your Journey
-                    <motion.div
-                      animate={{ x: [0, 5, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      <ArrowRight className="h-5 w-5" />
-                    </motion.div>
-                  </motion.span>
-
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-purple-700 to-pink-700"
-                    initial={{ x: "100%" }}
-                    whileHover={{ x: 0 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </motion.button>
-
-                <motion.button
-                  className="group flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-12 py-4 font-semibold text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/10"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Users className="h-5 w-5" />
-                  <span>Join Community</span>
-                </motion.button>
+                  <Button variant="glass" asChild>
+                    <a href={SOCIAL_LINKS.telegram} target="_blank">
+                      <Users className="h-5 w-5" />
+                      <span>Join Community</span>
+                    </a>
+                  </Button>
+                </motion.div>
               </div>
             </motion.div>
           </motion.div>

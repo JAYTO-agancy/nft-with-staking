@@ -1,4 +1,4 @@
-# 📝 NFT App - Nifty Frogs ✨
+# 📝 NFT App ✨
 
 A modern application built with Next.js.
 

@@ -23,7 +23,15 @@ export function AppWalletProvider({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme()}>{children}</RainbowKitProvider>
+        <RainbowKitProvider
+          theme={{
+            ...darkTheme(),
+            colors: { ...darkTheme().colors, accentColor: "#9810fa" },
+          }}
+          coolMode
+        >
+          {children}
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

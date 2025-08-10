@@ -6,3 +6,8 @@ export const CONTRACTS_ADDRESS = {
 
 export const BASE_URL_NFT =
   "https://s3.twcstorage.ru/c9d67636-856bad52-d66f-44f4-8928-4d1e0918544d/nft";
+
+export const SOCIAL_LINKS = {
+  telegram: "https://t.me/plumffel_nft",
+  twitter: "https://x.com/plumffel_nft",
+};
