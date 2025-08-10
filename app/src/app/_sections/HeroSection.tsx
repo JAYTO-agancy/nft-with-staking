@@ -122,7 +122,7 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
                 <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl lg:p-3">
                   <div className="relative h-[240px] w-[180px] overflow-hidden rounded-2xl lg:h-[480px] lg:w-[360px]">
                     <Image
-                      src="/img/hero_example.png"
+                      src="/img/hero_example_2.png"
                       alt="Plumffel NFT Middle"
                       fill
                       className="object-cover"
@@ -147,7 +147,7 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
                 <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-1.5 shadow-2xl backdrop-blur-2xl lg:p-3">
                   <div className="relative h-[240px] w-[180px] overflow-hidden rounded-2xl lg:h-[480px] lg:w-[360px]">
                     <Image
-                      src="/img/hero_example.png"
+                      src="/img/hero_example_3.png"
                       alt="Plumffel NFT Front"
                       fill
                       className="object-cover"
