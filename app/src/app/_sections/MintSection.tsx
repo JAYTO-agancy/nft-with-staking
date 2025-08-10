@@ -137,31 +137,10 @@ export function MintSection({ onMint }: { onMint: () => void }) {
     },
   };
 
-  const nftCardVariants: Variants = {
-    hidden: {
-      y: 100,
-      opacity: 0,
-      rotateY: 90,
-      scale: 0.8,
-    },
-    visible: {
-      y: 0,
-      opacity: 1,
-      rotateY: 0,
-      scale: 1,
-      transition: {
-        type: "spring" as const,
-        damping: 20,
-        stiffness: 100,
-        duration: 1.2,
-      },
-    },
-  };
-
   return (
     <section
       ref={ref}
-      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-32"
+      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-12"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0">
@@ -270,208 +249,207 @@ export function MintSection({ onMint }: { onMint: () => void }) {
             </motion.p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-16 lg:grid-cols-2">
-            {/* Mint Form */}
-            <motion.div variants={mintFormVariants} className="space-y-8">
-              {/* Mint Price Card */}
-              <motion.div
-                className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-blue-900/30 p-8 backdrop-blur-xl"
-                whileHover={{
-                  scale: 1.02,
-                  y: -5,
-                }}
-                transition={{
-                  type: "spring" as const,
-                  stiffness: 400,
-                  damping: 25,
-                }}
-              >
-                {/* Price display */}
-                <div className="mb-8 text-center">
-                  <motion.div
-                    className="mb-2 text-sm font-medium text-gray-400"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Mint Price
-                  </motion.div>
-                  <motion.div
-                    className="text-4xl font-black text-white md:text-5xl"
-                    whileHover={{ scale: 1.1 }}
-                    animate={{
-                      textShadow: [
-                        "0 0 0px rgba(168, 85, 247, 0)",
-                        "0 0 20px rgba(168, 85, 247, 0.5)",
-                        "0 0 0px rgba(168, 85, 247, 0)",
-                      ],
-                    }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  >
-                    0.01 ETH
-                  </motion.div>
-                  <motion.div
-                    className="text-sm text-gray-400"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    + gas fees
-                  </motion.div>
-                </div>
-
-                {/* Mint Button */}
+          {/* Mint Form */}
+          <motion.div
+            variants={mintFormVariants}
+            className="mx-auto w-full max-w-[600px] space-y-8"
+          >
+            {/* Mint Price Card */}
+            <motion.div
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-blue-900/30 p-8 backdrop-blur-xl"
+              whileHover={{
+                scale: 1.02,
+                y: -5,
+              }}
+              transition={{
+                type: "spring" as const,
+                stiffness: 400,
+                damping: 25,
+              }}
+            >
+              {/* Price display */}
+              <div className="mb-8 text-center">
                 <motion.div
-                  className="relative"
-                  onHoverStart={() => setIsHovered(true)}
-                  onHoverEnd={() => setIsHovered(false)}
+                  className="mb-2 text-sm font-medium text-gray-400"
+                  whileHover={{ scale: 1.05 }}
                 >
-                  <motion.div
-                    className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 opacity-75 blur"
-                    animate={
-                      isHovered
-                        ? {
-                            opacity: [0.75, 1, 0.75],
-                            scale: [1, 1.05, 1],
-                          }
-                        : {}
-                    }
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
+                  Mint Price
+                </motion.div>
+                <motion.div
+                  className="text-4xl font-black text-white md:text-5xl"
+                  whileHover={{ scale: 1.1 }}
+                  animate={{
+                    textShadow: [
+                      "0 0 0px rgba(168, 85, 247, 0)",
+                      "0 0 20px rgba(168, 85, 247, 0.5)",
+                      "0 0 0px rgba(168, 85, 247, 0)",
+                    ],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  0.01 ETH
+                </motion.div>
+                <motion.div
+                  className="text-sm text-gray-400"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  + gas fees
+                </motion.div>
+              </div>
 
-                  <motion.button
-                    onClick={onMint}
-                    className="relative w-full rounded-full bg-gradient-to-r from-purple-600 to-pink-600 py-6 text-xl font-bold text-white shadow-2xl transition-all duration-300"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+              {/* Mint Button */}
+              <motion.div
+                className="relative"
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+              >
+                <motion.div
+                  className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 opacity-75 blur"
+                  animate={
+                    isHovered
+                      ? {
+                          opacity: [0.75, 1, 0.75],
+                          scale: [1, 1.05, 1],
+                        }
+                      : {}
+                  }
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+
+                <motion.button
+                  onClick={onMint}
+                  className="relative w-full rounded-full bg-gradient-to-r from-purple-600 to-pink-600 py-6 text-xl font-bold text-white shadow-2xl transition-all duration-300"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.span
+                    className="flex items-center justify-center gap-3"
+                    whileHover={{ x: 5 }}
                   >
-                    <motion.span
-                      className="flex items-center justify-center gap-3"
-                      whileHover={{ x: 5 }}
+                    <motion.div
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
                     >
+                      <Zap className="h-6 w-6" />
+                    </motion.div>
+                    <span>Mint Your Plumffel</span>
+                    <motion.div
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <Sparkles className="h-6 w-6" />
+                    </motion.div>
+                  </motion.span>
+                </motion.button>
+              </motion.div>
+
+              {/* Rarity Info */}
+              <div className="mt-8 space-y-4">
+                <motion.h4
+                  className="text-center text-lg font-bold text-white"
+                  whileHover={{ scale: 1.05 }}
+                >
+                  Rarity Distribution
+                </motion.h4>
+
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                  {Object.entries(rarityConfig).map(
+                    ([rarity, config], index) => (
                       <motion.div
-                        animate={{ rotate: [0, 10, -10, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        key={rarity}
+                        className={`rounded-2xl border border-white/10 bg-gradient-to-r ${config.badge} p-4 text-center`}
+                        whileHover={{
+                          scale: 1.05,
+                          rotateY: 5,
+                        }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1, duration: 0.5 }}
                       >
-                        <Zap className="h-6 w-6" />
+                        <motion.div
+                          className="mb-2 text-2xl"
+                          animate={{
+                            rotate: [0, 10, -10, 0],
+                            scale: [1, 1.1, 1],
+                          }}
+                          transition={{
+                            duration: 3,
+                            repeat: Infinity,
+                            delay: index * 0.5,
+                          }}
+                        >
+                          {config.emoji}
+                        </motion.div>
+                        <div className="text-xs font-bold text-white">
+                          {rarity}
+                        </div>
                       </motion.div>
-                      <span>Mint Your Plumffel</span>
-                      <motion.div
-                        animate={{ x: [0, 5, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <Sparkles className="h-6 w-6" />
-                      </motion.div>
-                    </motion.span>
-                  </motion.button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Holographic overlay */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                animate={{ x: ["-100%", "100%"] }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut" as const,
+                  delay: 2,
+                }}
+              />
+            </motion.div>
+
+            {/* Additional Info */}
+            <motion.div variants={mintFormVariants} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <motion.div
+                  className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                >
+                  <div className="mb-3 flex items-center gap-3">
+                    <motion.div
+                      className="rounded-full bg-green-500 p-2"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </motion.div>
+                    <span className="font-bold text-white">Instant Reveal</span>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Your NFT metadata and rarity are revealed instantly after
+                    minting
+                  </p>
                 </motion.div>
 
-                {/* Rarity Info */}
-                <div className="mt-8 space-y-4">
-                  <motion.h4
-                    className="text-center text-lg font-bold text-white"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Rarity Distribution
-                  </motion.h4>
-
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                    {Object.entries(rarityConfig).map(
-                      ([rarity, config], index) => (
-                        <motion.div
-                          key={rarity}
-                          className={`rounded-2xl border border-white/10 bg-gradient-to-r ${config.badge} p-4 text-center`}
-                          whileHover={{
-                            scale: 1.05,
-                            rotateY: 5,
-                          }}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1, duration: 0.5 }}
-                        >
-                          <motion.div
-                            className="mb-2 text-2xl"
-                            animate={{
-                              rotate: [0, 10, -10, 0],
-                              scale: [1, 1.1, 1],
-                            }}
-                            transition={{
-                              duration: 3,
-                              repeat: Infinity,
-                              delay: index * 0.5,
-                            }}
-                          >
-                            {config.emoji}
-                          </motion.div>
-                          <div className="text-xs font-bold text-white">
-                            {rarity}
-                          </div>
-                        </motion.div>
-                      ),
-                    )}
-                  </div>
-                </div>
-
-                {/* Holographic overlay */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
-                  animate={{ x: ["-100%", "100%"] }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut" as const,
-                    delay: 2,
-                  }}
-                />
-              </motion.div>
-
-              {/* Additional Info */}
-              <motion.div variants={mintFormVariants} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <motion.div
-                    className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-                    whileHover={{ scale: 1.02, y: -2 }}
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <motion.div
-                        className="rounded-full bg-green-500 p-2"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        <TrendingUp className="h-5 w-5 text-white" />
-                      </motion.div>
-                      <span className="font-bold text-white">
-                        Instant Reveal
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      Your NFT metadata and rarity are revealed instantly after
-                      minting
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-                    whileHover={{ scale: 1.02, y: -2 }}
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <motion.div
-                        className="rounded-full bg-blue-500 p-2"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          delay: 0.5,
-                        }}
-                      >
-                        <Award className="h-5 w-5 text-white" />
-                      </motion.div>
-                      <span className="font-bold text-white">Stakeable</span>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      Earn rewards by staking your Plumffel in our platform
-                    </p>
-                  </motion.div>
-                </div>
-              </motion.div>
+                  className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                >
+                  <div className="mb-3 flex items-center gap-3">
+                    <motion.div
+                      className="rounded-full bg-blue-500 p-2"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: 0.5,
+                      }}
+                    >
+                      <Award className="h-5 w-5 text-white" />
+                    </motion.div>
+                    <span className="font-bold text-white">Stakeable</span>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Earn rewards by staking your Plumffel in our platform
+                  </p>
+                </motion.div>
+              </div>
             </motion.div>
-          </div>
+          </motion.div>
         </motion.div>
       </div>
     </section>

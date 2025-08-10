@@ -356,7 +356,7 @@ export function LastMintedSection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-32"
+      className="relative w-full overflow-hidden bg-gradient-to-b from-black via-gray-900 to-black py-12"
     >
       {/* Animated background */}
       <div className="absolute inset-0">
@@ -509,7 +509,7 @@ export function LastMintedSection() {
           )}
 
           {/* View All Button */}
-          {nfts.length > 0 && (
+          {/* {nfts.length > 0 && (
             <motion.div variants={headerVariants} className="text-center">
               <motion.button
                 className="group relative overflow-hidden rounded-full bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 px-12 py-4 font-semibold text-white shadow-2xl"
@@ -537,7 +537,7 @@ export function LastMintedSection() {
                 />
               </motion.button>
             </motion.div>
-          )}
+          )} */}
         </motion.div>
       </div>
     </section>

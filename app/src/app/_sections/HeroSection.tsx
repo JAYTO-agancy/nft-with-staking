@@ -69,7 +69,7 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
         />
       </div>
 
-      <div className="relative container mx-auto px-4 pt-20 sm:px-6 lg:px-8">
+      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={containerVariants}
           initial="hidden"
