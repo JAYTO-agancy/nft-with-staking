@@ -222,7 +222,7 @@ export default function NFTPage() {
                     <span className="text-sm text-gray-400">Multiplier</span>
                   </div>
                   <span className="text-xl font-bold text-white">
-                    {nftData.rarity.multiplier}x
+                    {nftData.rarity.multiplier / 100}x
                   </span>
                 </div>
 
@@ -262,7 +262,7 @@ export default function NFTPage() {
               </div>
 
               {/* Staking Info */}
-              {nftData.staking && (
+              {/* {nftData.staking && (
                 <div className="rounded-xl border border-white/10 bg-gradient-to-r from-green-900/20 to-blue-900/20 p-6 backdrop-blur-xl">
                   <h3 className="mb-4 text-lg font-bold text-white">
                     Staking Status
@@ -300,7 +300,7 @@ export default function NFTPage() {
                     </div>
                   )}
                 </div>
-              )}
+              )} */}
 
               {/* Attributes */}
               {nftData.metadata?.attributes &&

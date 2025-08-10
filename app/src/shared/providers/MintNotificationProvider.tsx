@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/shared/ui/kit/dialog";
 import { NFTCard } from "@/shared/components/NFTCard";
+import Link from "next/link";
 
 type MintedNFT = {
   tokenId: number;
@@ -402,12 +403,17 @@ export function MintNotificationProvider({ children }: Props) {
           {mintedNft && (
             <div className="flex flex-col items-center gap-6 py-4">
               <div className="w-64">
-                <NFTCard
-                  tokenId={mintedNft.tokenId}
-                  imageUrl={mintedNft.imageUrl}
-                  rarity={mintedNft.rarity}
-                  showNewBadge
-                />
+                <Link
+                  href={`/nft/${mintedNft.tokenId}`}
+                  onClick={hideMintNotification}
+                >
+                  <NFTCard
+                    tokenId={mintedNft.tokenId}
+                    imageUrl={mintedNft.imageUrl}
+                    rarity={mintedNft.rarity}
+                    showNewBadge
+                  />
+                </Link>
               </div>
               <div className="space-y-2 text-center">
                 <p className="text-gray-300">
