@@ -226,7 +226,11 @@ export function HeroSection({ onMint }: { onMint?: () => void }) {
             >
               {[
                 { value: "10K", label: "Supply", delay: 0 },
-                { value: "0.01Ξ", label: "Price", delay: 0.1 },
+                {
+                  value: process.env.NEXT_PUBLIC_MINT_PRICE,
+                  label: "Price",
+                  delay: 0.1,
+                },
                 { value: "5", label: "Rarities", delay: 0.2 },
               ].map((stat, index) => (
                 <div key={stat.label} className="group relative text-center">
