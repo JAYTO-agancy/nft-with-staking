@@ -440,7 +440,7 @@ async function reconcileExistingMints() {
           tokenId
         );
       if (contractRarity !== null) {
-        rarity = contractRarity + 1; // enum 0..4 → levels 1..5
+        rarity = contractRarity;
       }
       const job = jobManager.createJob({
         tokenId,
