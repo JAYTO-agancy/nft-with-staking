@@ -9,6 +9,9 @@ import {
   Target,
   Crown,
   Gem,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import {
   motion,
@@ -18,58 +21,7 @@ import {
   useTransform,
   Variants,
 } from "framer-motion";
-
-const stats = {
-  total: 10000,
-  minted: 4321,
-  rarities: [
-    {
-      name: "Legendary",
-      count: 12,
-      color: "from-yellow-400 via-orange-500 to-yellow-600",
-      bgGradient: "from-yellow-900/30 via-orange-900/20 to-yellow-800/30",
-      glowColor: "shadow-yellow-500/30",
-      icon: Crown,
-      emoji: "👑",
-    },
-    {
-      name: "Epic",
-      count: 100,
-      color: "from-purple-500 via-pink-500 to-purple-600",
-      bgGradient: "from-purple-900/30 via-pink-900/20 to-purple-800/30",
-      glowColor: "shadow-purple-500/30",
-      icon: Gem,
-      emoji: "💎",
-    },
-    {
-      name: "Rare",
-      count: 400,
-      color: "from-blue-500 via-cyan-500 to-blue-600",
-      bgGradient: "from-blue-900/30 via-cyan-900/20 to-blue-800/30",
-      glowColor: "shadow-blue-500/30",
-      icon: Target,
-      emoji: "🌟",
-    },
-    {
-      name: "Uncommon",
-      count: 1200,
-      color: "from-green-500 via-emerald-500 to-green-600",
-      bgGradient: "from-green-900/30 via-emerald-900/20 to-green-800/30",
-      glowColor: "shadow-green-500/30",
-      icon: Zap,
-      emoji: "✨",
-    },
-    {
-      name: "Common",
-      count: 2609,
-      color: "from-gray-500 via-slate-500 to-gray-600",
-      bgGradient: "from-gray-900/30 via-slate-900/20 to-gray-800/30",
-      glowColor: "shadow-gray-500/30",
-      icon: Award,
-      emoji: "🔹",
-    },
-  ],
-};
+import { useContractStats } from "@/shared/hooks/useContractStats";
 
 function AnimatedCounter({
   target,
@@ -194,8 +146,82 @@ function HolographicProgressBar({
 }
 
 export function StatsSection() {
-  const remaining = stats.total - stats.minted;
-  const mintedPercentage = (stats.minted / stats.total) * 100;
+  const {
+    stats: contractStats,
+    loading,
+    error,
+    refreshStats,
+  } = useContractStats();
+
+  // Используем данные из контракта или fallback
+  const stats = contractStats || {
+    total: 10000,
+    minted: 0,
+    remaining: 10000,
+    mintedPercentage: 0,
+    rarities: [
+      {
+        name: "Legendary",
+        count: 0,
+        limit: 50,
+        percentage: 0,
+        color: "from-yellow-400 via-orange-500 to-yellow-600",
+        bgGradient: "from-yellow-900/30 via-orange-900/20 to-yellow-800/30",
+        glowColor: "shadow-yellow-500/30",
+        icon: "Crown",
+        emoji: "👑",
+      },
+      {
+        name: "Epic",
+        count: 0,
+        limit: 450,
+        percentage: 0,
+        color: "from-purple-500 via-pink-500 to-purple-600",
+        bgGradient: "from-purple-900/30 via-pink-900/20 to-purple-800/30",
+        glowColor: "shadow-purple-500/30",
+        icon: "Gem",
+        emoji: "💎",
+      },
+      {
+        name: "Rare",
+        count: 0,
+        limit: 1000,
+        percentage: 0,
+        color: "from-blue-500 via-cyan-500 to-blue-600",
+        bgGradient: "from-blue-900/30 via-cyan-900/20 to-blue-800/30",
+        glowColor: "shadow-blue-500/30",
+        icon: "Target",
+        emoji: "🌟",
+      },
+      {
+        name: "Uncommon",
+        count: 0,
+        limit: 2500,
+        percentage: 0,
+        color: "from-green-500 via-emerald-500 to-green-600",
+        bgGradient: "from-green-900/30 via-emerald-900/20 to-green-800/30",
+        glowColor: "shadow-green-500/30",
+        icon: "Zap",
+        emoji: "✨",
+      },
+      {
+        name: "Common",
+        count: 0,
+        limit: 6000,
+        percentage: 0,
+        color: "from-gray-500 via-slate-500 to-gray-600",
+        bgGradient: "from-gray-900/30 via-slate-900/20 to-gray-800/30",
+        glowColor: "shadow-gray-500/30",
+        icon: "Award",
+        emoji: "🔹",
+      },
+    ],
+    totalStaked: 0,
+    totalRewards: 0,
+  };
+
+  const remaining = stats.remaining;
+  const mintedPercentage = stats.mintedPercentage;
 
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
@@ -329,24 +355,56 @@ export function StatsSection() {
               }}
             >
               <motion.div
-                animate={{ rotate: [0, 180, 360] }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut" as const,
-                }}
+                animate={loading ? { rotate: 360 } : { rotate: [0, 180, 360] }}
+                transition={
+                  loading
+                    ? {
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear" as const,
+                      }
+                    : {
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: "easeInOut" as const,
+                      }
+                }
               >
-                <BarChart3 className="h-5 w-5 text-green-400" />
+                {loading ? (
+                  <Loader2 className="h-5 w-5 text-green-400" />
+                ) : (
+                  <BarChart3 className="h-5 w-5 text-green-400" />
+                )}
               </motion.div>
               <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-sm font-medium text-transparent">
-                Collection Analytics
+                Collection Analytics {loading && "(Loading...)"}
               </span>
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
+              {error ? (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <TrendingUp className="h-5 w-5 text-blue-400" />
+                </motion.div>
+              )}
+              <motion.button
+                onClick={refreshStats}
+                className="ml-2 rounded-full p-1 transition-colors hover:bg-white/10"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                disabled={loading}
               >
-                <TrendingUp className="h-5 w-5 text-blue-400" />
-              </motion.div>
+                <RefreshCw
+                  className={`h-4 w-4 text-gray-400 ${loading ? "animate-spin" : ""}`}
+                />
+              </motion.button>
             </motion.div>
 
             <motion.h2
@@ -377,6 +435,24 @@ export function StatsSection() {
               universe. Witness the growth and rarity distribution of our
               legendary collection.
             </motion.p>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mx-auto mt-4 max-w-xl rounded-lg border border-red-500/20 bg-red-900/20 p-4 text-red-300"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">
+                    Failed to load live data: {error}
+                  </span>
+                </div>
+                <div className="mt-2 text-xs text-red-400">
+                  Showing fallback data. Click refresh to try again.
+                </div>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Main Stats Cards */}
@@ -547,8 +623,26 @@ export function StatsSection() {
 
               <div className="space-y-8">
                 {stats.rarities.map((rarity, index) => {
-                  const percentage = (rarity.count / stats.total) * 100;
-                  const Icon = rarity.icon;
+                  const percentage =
+                    rarity.percentage || (rarity.count / stats.total) * 100;
+                  // Преобразуем строковое имя иконки в компонент
+                  const getIcon = (iconName: string) => {
+                    switch (iconName) {
+                      case "Crown":
+                        return Crown;
+                      case "Gem":
+                        return Gem;
+                      case "Target":
+                        return Target;
+                      case "Zap":
+                        return Zap;
+                      case "Award":
+                        return Award;
+                      default:
+                        return Award;
+                    }
+                  };
+                  const Icon = getIcon(rarity.icon);
 
                   return (
                     <motion.div
