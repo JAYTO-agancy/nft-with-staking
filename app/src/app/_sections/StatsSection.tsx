@@ -21,7 +21,7 @@ import {
   useTransform,
   Variants,
 } from "framer-motion";
-import { useContractStats } from "@/shared/hooks/useContractStats";
+import { useContractStats } from "@/shared/hooks";
 
 function AnimatedCounter({
   target,

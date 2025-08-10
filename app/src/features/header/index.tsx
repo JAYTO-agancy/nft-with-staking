@@ -6,7 +6,7 @@ import { LogoLink } from "@/shared/ui/logo";
 import { cn } from "@/shared/lib/css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Star, ShoppingBag } from "lucide-react";
+import { Home, Star, ShoppingBag, Grid3X3 } from "lucide-react";
 
 const navigationItems = [
   {

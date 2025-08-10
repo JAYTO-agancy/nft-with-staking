@@ -1,12 +1,4 @@
-import { useState, useEffect } from "react";
-import { createPublicClient, http, getContract } from "viem";
-import { sepolia } from "viem/chains";
-import {
-  StakableNFTAbi,
-  NFTStakingAbi,
-  RewardTokenAbi,
-} from "@/shared/lib/abis";
-import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
+import { useCollectionData, useRarityData } from "./useContract";
 
 // Типы для статистики
 export interface RarityStats {
@@ -31,115 +23,81 @@ export interface ContractStats {
   totalRewards: number;
 }
 
-// Клиент для работы с блокчейном
-const client = createPublicClient({
-  chain: sepolia,
-  transport: http("https://sepolia.drpc.org"),
-});
-
-// Контракты
-const nftContract = getContract({
-  address: CONTRACTS_ADDRESS.StakableNFT,
-  abi: StakableNFTAbi,
-  client,
-});
-
-const stakingContract = getContract({
-  address: CONTRACTS_ADDRESS.NFTStaking,
-  abi: NFTStakingAbi,
-  client,
-});
-
-const rewardTokenContract = getContract({
-  address: CONTRACTS_ADDRESS.RewardToken,
-  abi: RewardTokenAbi,
-  client,
-});
-
 export function useContractStats() {
-  const [stats, setStats] = useState<ContractStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Получаем данные из контрактов через wagmi
+  const collectionData = useCollectionData();
+  const rarityData = useRarityData();
 
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const loading = collectionData.isLoading || rarityData.isLoading;
+  const error =
+    collectionData.error?.message || rarityData.error?.message || null;
 
-      // Получаем базовые данные
-      const [totalSupply, maxSupply, totalStaked, totalRewards] =
-        await Promise.all([
-          nftContract.read.totalSupply(),
-          nftContract.read.MAX_SUPPLY(),
-          stakingContract.read.totalStakedNFTs().catch(() => 0n), // fallback если стейкинг недоступен
-          rewardTokenContract.read.totalSupply().catch(() => 0n), // fallback если токены недоступны
-        ]);
+  // Конфигурация редкостей
+  const rarityConfigs = [
+    {
+      key: "legendary" as const,
+      name: "Legendary",
+      color: "from-yellow-400 via-orange-500 to-yellow-600",
+      bgGradient: "from-yellow-900/30 via-orange-900/20 to-yellow-800/30",
+      glowColor: "shadow-yellow-500/30",
+      icon: "Crown",
+      emoji: "👑",
+    },
+    {
+      key: "epic" as const,
+      name: "Epic",
+      color: "from-purple-500 via-pink-500 to-purple-600",
+      bgGradient: "from-purple-900/30 via-pink-900/20 to-purple-800/30",
+      glowColor: "shadow-purple-500/30",
+      icon: "Gem",
+      emoji: "💎",
+    },
+    {
+      key: "rare" as const,
+      name: "Rare",
+      color: "from-blue-500 via-cyan-500 to-blue-600",
+      bgGradient: "from-blue-900/30 via-cyan-900/20 to-blue-800/30",
+      glowColor: "shadow-blue-500/30",
+      icon: "Target",
+      emoji: "🌟",
+    },
+    {
+      key: "uncommon" as const,
+      name: "Uncommon",
+      color: "from-green-500 via-emerald-500 to-green-600",
+      bgGradient: "from-green-900/30 via-emerald-900/20 to-green-800/30",
+      glowColor: "shadow-green-500/30",
+      icon: "Zap",
+      emoji: "✨",
+    },
+    {
+      key: "common" as const,
+      name: "Common",
+      color: "from-gray-500 via-slate-500 to-gray-600",
+      bgGradient: "from-gray-900/30 via-slate-900/20 to-gray-800/30",
+      glowColor: "shadow-gray-500/30",
+      icon: "Award",
+      emoji: "🔹",
+    },
+  ];
 
-      const minted = Number(totalSupply);
-      const total = Number(maxSupply);
-      const remaining = total - minted;
-      const mintedPercentage = (minted / total) * 100;
-
-      // Конфигурация редкостей
-      const rarityConfigs = [
-        {
-          tier: 4, // LEGENDARY
-          name: "Legendary",
-          color: "from-yellow-400 via-orange-500 to-yellow-600",
-          bgGradient: "from-yellow-900/30 via-orange-900/20 to-yellow-800/30",
-          glowColor: "shadow-yellow-500/30",
-          icon: "Crown",
-          emoji: "👑",
-        },
-        {
-          tier: 3, // EPIC
-          name: "Epic",
-          color: "from-purple-500 via-pink-500 to-purple-600",
-          bgGradient: "from-purple-900/30 via-pink-900/20 to-purple-800/30",
-          glowColor: "shadow-purple-500/30",
-          icon: "Gem",
-          emoji: "💎",
-        },
-        {
-          tier: 2, // RARE
-          name: "Rare",
-          color: "from-blue-500 via-cyan-500 to-blue-600",
-          bgGradient: "from-blue-900/30 via-cyan-900/20 to-blue-800/30",
-          glowColor: "shadow-blue-500/30",
-          icon: "Target",
-          emoji: "🌟",
-        },
-        {
-          tier: 1, // UNCOMMON
-          name: "Uncommon",
-          color: "from-green-500 via-emerald-500 to-green-600",
-          bgGradient: "from-green-900/30 via-emerald-900/20 to-green-800/30",
-          glowColor: "shadow-green-500/30",
-          icon: "Zap",
-          emoji: "✨",
-        },
-        {
-          tier: 0, // COMMON
-          name: "Common",
-          color: "from-gray-500 via-slate-500 to-gray-600",
-          bgGradient: "from-gray-900/30 via-slate-900/20 to-gray-800/30",
-          glowColor: "shadow-gray-500/30",
-          icon: "Award",
-          emoji: "🔹",
-        },
-      ];
-
-      // Получаем статистику по редкостям
-      const rarities = await Promise.all(
-        rarityConfigs.map(async (config) => {
-          try {
-            const [mintedCount, supplyLimit] = await Promise.all([
-              nftContract.read.rarityMintedCount([config.tier]),
-              nftContract.read.raritySupplyLimits([config.tier]),
-            ]);
-
-            const count = Number(mintedCount);
-            const limit = Number(supplyLimit);
+  // Формируем статистику
+  const stats: ContractStats | null =
+    collectionData.data && rarityData.data
+      ? {
+          total: collectionData.data.maxSupply,
+          minted: collectionData.data.totalSupply,
+          remaining:
+            collectionData.data.maxSupply - collectionData.data.totalSupply,
+          mintedPercentage:
+            (collectionData.data.totalSupply / collectionData.data.maxSupply) *
+            100,
+          totalStaked: collectionData.data.totalStaked,
+          totalRewards: collectionData.data.totalRewards,
+          rarities: rarityConfigs.map((config) => {
+            const rarityInfo = rarityData.data?.[config.key];
+            const count = rarityInfo?.count || 0;
+            const limit = rarityInfo?.limit || 0;
             const percentage = limit > 0 ? (count / limit) * 100 : 0;
 
             return {
@@ -148,44 +106,13 @@ export function useContractStats() {
               limit,
               percentage,
             };
-          } catch (err) {
-            console.warn(
-              `Failed to fetch rarity data for ${config.name}:`,
-              err,
-            );
-            return {
-              ...config,
-              count: 0,
-              limit: 0,
-              percentage: 0,
-            };
-          }
-        }),
-      );
-
-      setStats({
-        total,
-        minted,
-        remaining,
-        mintedPercentage,
-        rarities,
-        totalStaked: Number(totalStaked),
-        totalRewards: Number(totalRewards),
-      });
-    } catch (err) {
-      console.error("Error fetching contract stats:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch stats");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
+          }),
+        }
+      : null;
 
   const refreshStats = () => {
-    fetchStats();
+    collectionData.refetch();
+    rarityData.refetch();
   };
 
   return {
