@@ -62,40 +62,18 @@ const missions = [
 
 const team = [
   {
-    name: "Alex Chen",
+    name: "Grigory Morgachev",
     role: "Lead Developer",
-    bio: "Full-stack wizard with 8+ years in blockchain development. Previously architected DeFi protocols handling $100M+ TVL.",
-    avatar: "/img/logo.png",
+    bio: "Full-stack wizard with 8+ years in web development",
+    avatar: "/img/avatar_1.png",
     gradient: "from-purple-500 to-pink-600",
-    socials: {
-      github: "#",
-      twitter: "#",
-      linkedin: "#",
-    },
   },
   {
-    name: "Sarah Kim",
+    name: "Tatiana Morgacheva",
     role: "Creative Director",
-    bio: "Award-winning artist and designer. Former creative lead at top gaming studios, specialized in character design and world-building.",
-    avatar: "/img/logo.png",
+    bio: "Artist and designer",
+    avatar: "/img/avatar_2.png",
     gradient: "from-blue-500 to-cyan-600",
-    socials: {
-      github: "#",
-      twitter: "#",
-      linkedin: "#",
-    },
-  },
-  {
-    name: "Marcus Johnson",
-    role: "Community Lead",
-    bio: "Community building expert with deep Web3 knowledge. Successfully launched and managed 50K+ member communities.",
-    avatar: "/img/logo.png",
-    gradient: "from-green-500 to-emerald-600",
-    socials: {
-      github: "#",
-      twitter: "#",
-      linkedin: "#",
-    },
   },
 ];
 
@@ -455,7 +433,7 @@ export function ProjectStorySection() {
               </motion.p>
             </div>
 
-            <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
+            <div className="mx-auto grid max-w-4xl grid-cols-1 gap-12 md:grid-cols-2">
               {team.map((member, index) => {
                 const isHovered = hoveredTeamMember === index;
 
@@ -549,41 +527,6 @@ export function ProjectStorySection() {
                       >
                         {member.bio}
                       </motion.p>
-
-                      {/* Social links */}
-                      <motion.div
-                        className="flex justify-center gap-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={
-                          isHovered
-                            ? { opacity: 1, y: 0 }
-                            : { opacity: 0.7, y: 0 }
-                        }
-                        transition={{ duration: 0.3 }}
-                      >
-                        {Object.entries(member.socials).map(
-                          ([platform, url]) => {
-                            const icons = {
-                              github: Github,
-                              twitter: Twitter,
-                              linkedin: Linkedin,
-                            };
-                            const Icon = icons[platform as keyof typeof icons];
-
-                            return (
-                              <motion.a
-                                key={platform}
-                                href={url}
-                                className="rounded-full bg-white/10 p-2 text-gray-400 transition-colors hover:bg-white/20 hover:text-white"
-                                whileHover={{ scale: 1.2, rotate: 10 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                <Icon className="h-5 w-5" />
-                              </motion.a>
-                            );
-                          },
-                        )}
-                      </motion.div>
 
                       {/* Holographic overlay */}
                       <motion.div
