@@ -54,7 +54,8 @@ export default function MarketplacePage() {
             </h2>
 
             <p className="mb-8 text-gray-400">
-              We're building an amazing marketplace where you'll be able to:
+              We&apos;re building an amazing marketplace where you&apos;ll be
+              able to:
             </p>
 
             <div className="grid gap-4 text-left md:grid-cols-2">

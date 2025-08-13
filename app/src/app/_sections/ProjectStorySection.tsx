@@ -282,8 +282,8 @@ export function ProjectStorySection() {
             >
               Born from a vision to blend cutting-edge blockchain technology
               with the universal language of cuteness, Plumffel represents more
-              than just an NFT collection—it's a movement towards a more joyful
-              digital future.
+              than just an NFT collection—it&apos;s a movement towards a more
+              joyful digital future.
             </motion.p>
           </motion.div>
 
@@ -572,8 +572,8 @@ export function ProjectStorySection() {
                 className="mb-8 text-lg text-gray-400"
                 whileHover={{ scale: 1.02 }}
               >
-                Be part of a community that's redefining what NFTs can be. Cute,
-                valuable, and revolutionary.
+                Be part of a community that&apos;s redefining what NFTs can be.
+                Cute, valuable, and revolutionary.
               </motion.p>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">

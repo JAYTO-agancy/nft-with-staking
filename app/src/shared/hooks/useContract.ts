@@ -173,7 +173,7 @@ export function useNFTInfo(tokenId: number) {
             owner: data[1].result as string,
             rarity: Number(data[2].result),
             multiplier: Number(data[3].result),
-            stakeInfo: data[4].result as [string, bigint, bigint, bigint],
+            stakeInfo: data[4].result,
           }
         : null,
     exists,

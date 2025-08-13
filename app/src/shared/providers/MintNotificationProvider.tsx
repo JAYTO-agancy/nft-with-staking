@@ -411,7 +411,7 @@ export function MintNotificationProvider({ children }: Props) {
               </div>
               <div className="space-y-2 text-center">
                 <p className="text-gray-300">
-                  Congratulations! You've successfully minted a{" "}
+                  Congratulations! You&apos;ve successfully minted a{" "}
                   <span className="font-bold text-white">
                     {mintedNft.rarity}
                   </span>{" "}

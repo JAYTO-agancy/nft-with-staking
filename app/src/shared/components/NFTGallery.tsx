@@ -170,13 +170,7 @@ export function NFTGallery({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <NFTCard
-                tokenId={nft.tokenId}
-                imageUrl={nft.imageUrl}
-                name={nft.name}
-                rarity={nft.rarity}
-                isStaked={nft.isStaked}
-              />
+              <NFTCard tokenId={nft.tokenId} />
             </motion.div>
           ))}
         </motion.div>

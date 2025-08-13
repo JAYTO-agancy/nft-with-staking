@@ -83,18 +83,22 @@ export function useNFTData(tokenId: number) {
           multiplier: contractData.multiplier,
         },
         staking: {
-          isStaked:
-            contractData.stakeInfo[0] !==
-            "0x0000000000000000000000000000000000000000",
+          isStaked: !!(
+            contractData.stakeInfo &&
+            contractData.stakeInfo.owner !==
+              "0x0000000000000000000000000000000000000000"
+          ),
           stakedAt:
-            contractData.stakeInfo[0] !==
-            "0x0000000000000000000000000000000000000000"
-              ? Number(contractData.stakeInfo[1])
+            contractData.stakeInfo &&
+            contractData.stakeInfo.owner !==
+              "0x0000000000000000000000000000000000000000"
+              ? Number(contractData.stakeInfo.stakedAt)
               : undefined,
           rewards:
-            contractData.stakeInfo[0] !==
-            "0x0000000000000000000000000000000000000000"
-              ? Number(contractData.stakeInfo[2])
+            contractData.stakeInfo &&
+            contractData.stakeInfo.owner !==
+              "0x0000000000000000000000000000000000000000"
+              ? Number(contractData.stakeInfo.lastClaimTime)
               : undefined,
         },
       }
