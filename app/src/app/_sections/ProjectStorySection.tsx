@@ -64,14 +64,14 @@ const missions = [
 
 const team = [
   {
-    name: "Grigory Morgachev",
+    name: "Grigory",
     role: "Lead Developer",
     bio: "Full-stack wizard with 8+ years in web development",
     avatar: "/img/avatar_1.png",
     gradient: "from-purple-500 to-pink-600",
   },
   {
-    name: "Tatiana Morgacheva",
+    name: "Tatiana",
     role: "Creative Director",
     bio: "Artist and designer",
     avatar: "/img/avatar_2.png",
