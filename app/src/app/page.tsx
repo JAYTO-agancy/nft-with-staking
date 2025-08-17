@@ -13,7 +13,7 @@ import { LastMintedSection } from "./_sections/LastMintedSection";
 import { StatsSection } from "./_sections/StatsSection";
 import { ProjectStorySection } from "./_sections/ProjectStorySection";
 import { CONTRACTS_ADDRESS } from "@/shared/lib/constants";
-import { useMintNotification } from "@/shared/providers/MintNotificationProvider";
+import { useMintNotification } from "@/shared/context/mint-notification";
 
 function randomBytes32() {
   const bytes = new Uint8Array(32);

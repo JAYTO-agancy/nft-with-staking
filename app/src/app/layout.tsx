@@ -10,7 +10,7 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { sepolia } from "wagmi/chains";
 import { QueryClient } from "@tanstack/react-query";
 import { AppWalletProvider } from "@/shared/context/app-wallet";
-import { MintNotificationProvider } from "@/shared/providers/MintNotificationProvider";
+import { MintNotificationProvider } from "@/shared/context/mint-notification";
 
 const balooFont = Baloo_2({
   variable: "--font-baloo",

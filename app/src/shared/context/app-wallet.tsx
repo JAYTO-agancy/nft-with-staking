@@ -15,6 +15,8 @@ const config = getDefaultConfig({
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
   chains: [sepolia],
   ssr: true,
+  appUrl: "https://plumffel-nft.fun",
+  appIcon: "https://plumffel-nft.fun/logo.png",
 });
 
 const queryClient = new QueryClient();
