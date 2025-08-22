@@ -71,7 +71,7 @@ const team = [
     gradient: "from-purple-500 to-pink-600",
   },
   {
-    name: "Tatiana",
+    name: "Eva",
     role: "Creative Director",
     bio: "Artist and designer",
     avatar: "/img/avatar_2.png",
