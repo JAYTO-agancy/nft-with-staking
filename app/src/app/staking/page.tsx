@@ -45,6 +45,9 @@ export default function StakingPage() {
   const nftAddress = CONTRACTS_ADDRESS.StakableNFT;
   const stakingAddress = CONTRACTS_ADDRESS.NFTStaking;
 
+  const unstaked = tokens.filter((t) => !t.staked);
+  const staked = tokens.filter((t) => t.staked);
+
   // Initialize WebSocket client
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_WS_RPC_URL;
@@ -226,14 +229,79 @@ export default function StakingPage() {
       onError: () => {},
     });
 
+    // Watch for Approval events to reset loading state
+    const unwatchApproval = client.watchContractEvent?.({
+      address: nftAddress,
+      abi: StakableNFTAbi as any,
+      eventName: "Approval",
+      onLogs: (logs: any[]) => {
+        for (const log of logs) {
+          const owner = log.args?.owner as string;
+          const approved = log.args?.approved as string;
+          const tokenId = Number(log.args?.tokenId ?? 0);
+
+          if (
+            owner?.toLowerCase() === address.toLowerCase() &&
+            approved?.toLowerCase() === stakingAddress.toLowerCase()
+          ) {
+            // Update token approval state and reset loading
+            setTokens((prev) =>
+              prev.map((t) =>
+                t.tokenId === tokenId ? { ...t, approved: true } : t,
+              ),
+            );
+            setActionLoading((prev) => ({ ...prev, [tokenId]: false }));
+          }
+        }
+      },
+      onError: () => {},
+    });
+
+    // Watch for ApprovalForAll events
+    const unwatchApprovalForAll = client.watchContractEvent?.({
+      address: nftAddress,
+      abi: StakableNFTAbi as any,
+      eventName: "ApprovalForAll",
+      onLogs: (logs: any[]) => {
+        for (const log of logs) {
+          const owner = log.args?.owner as string;
+          const operator = log.args?.operator as string;
+          const approved = log.args?.approved as boolean;
+
+          if (
+            owner?.toLowerCase() === address.toLowerCase() &&
+            operator?.toLowerCase() === stakingAddress.toLowerCase() &&
+            approved
+          ) {
+            // Update approval state for all unstaked tokens and reset loading
+            setTokens((prev) =>
+              prev.map((t) => (!t.staked ? { ...t, approved: true } : t)),
+            );
+            setActionLoading((prev) => {
+              const newState = { ...prev };
+              unstaked.forEach((token) => {
+                if (!token.approved) {
+                  newState[token.tokenId] = false;
+                }
+              });
+              return newState;
+            });
+          }
+        }
+      },
+      onError: () => {},
+    });
+
     return () => {
       try {
         unwatchStake?.();
         unwatchUnstake?.();
         unwatchRewards?.();
+        unwatchApproval?.();
+        unwatchApprovalForAll?.();
       } catch {}
     };
-  }, [address, stakingAddress]);
+  }, [address, stakingAddress, nftAddress, unstaked]);
 
   async function stakeSelected(ids: number[]) {
     if (!ids.length) return;
@@ -301,10 +369,8 @@ export default function StakingPage() {
         args: [stakingAddress, BigInt(tokenId)],
       });
 
-      // Optimistically update approval state
-      setTokens((prev) =>
-        prev.map((t) => (t.tokenId === tokenId ? { ...t, approved: true } : t)),
-      );
+      // Don't optimistically update - wait for blockchain confirmation
+      // The WebSocket event will handle the state update
     } catch (error) {
       setActionLoading((prev) => ({ ...prev, [tokenId]: false }));
       throw error;
@@ -327,8 +393,8 @@ export default function StakingPage() {
         args: [stakingAddress, true],
       });
 
-      // Optimistically update approval state for all tokens
-      setTokens((prev) => prev.map((t) => ({ ...t, approved: true })));
+      // Don't optimistically update - wait for blockchain confirmation
+      // The WebSocket event will handle the state update
     } catch (error) {
       setActionLoading((prev) =>
         unapprovedIds.reduce((acc, id) => ({ ...acc, [id]: false }), prev),
@@ -337,8 +403,6 @@ export default function StakingPage() {
     }
   }
 
-  const unstaked = tokens.filter((t) => !t.staked);
-  const staked = tokens.filter((t) => t.staked);
   const unapprovedCount = unstaked.filter((t) => !t.approved).length;
   const totalPendingRewards =
     staked.reduce((acc, t) => acc + Number(t.pending || 0n), 0) / 1e18;
@@ -435,11 +499,22 @@ export default function StakingPage() {
           {unapprovedCount > 0 && (
             <Button
               onClick={approveAllNFTs}
-              disabled={isPending}
+              disabled={
+                isPending || unstaked.some((t) => actionLoading[t.tokenId])
+              }
               className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
             >
-              <Zap className="mr-2 h-4 w-4" />
-              Approve All NFTs ({unapprovedCount})
+              {unstaked.some((t) => actionLoading[t.tokenId]) ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Waiting for approvals...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Approve All NFTs ({unapprovedCount})
+                </>
+              )}
             </Button>
           )}
 
@@ -449,7 +524,11 @@ export default function StakingPage() {
                 unstaked.filter((t) => t.approved).map((t) => t.tokenId),
               )
             }
-            disabled={!unstaked.filter((t) => t.approved).length || isPending}
+            disabled={
+              !unstaked.filter((t) => t.approved).length ||
+              isPending ||
+              unstaked.some((t) => actionLoading[t.tokenId])
+            }
             className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
           >
             <Star className="mr-2 h-4 w-4" />
@@ -558,7 +637,7 @@ export default function StakingPage() {
                             {actionLoading[t.tokenId] ? (
                               <>
                                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                Approving...
+                                Waiting for approval...
                               </>
                             ) : (
                               "Approve"
